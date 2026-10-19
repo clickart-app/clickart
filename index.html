@@ -134,7 +134,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .dk:hover{color:var(--fg)}
 .dk[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
 .dk-sep{width:1px;margin:10px 3px;background:var(--line)}
+.dk:disabled{opacity:.3;cursor:default}
 .dk.add{color:var(--accent)}
+.dock-space{height:96px}
 .dk.add:hover,.dk.add:focus-visible{background:var(--line);color:var(--accent)}
 @media (max-width:380px){.dk{width:42px;height:42px}}
 
@@ -544,7 +546,8 @@ function show(n){
   cur=n;
   for(const k in screens)screens[k].hidden=k!==n;
   $('#top').hidden=n==='home';
-  $('#dock').hidden=n!=='lista';
+  $('#dock').hidden=n!=='lista'&&n!=='fonti';
+  renderDock();
   $('#menu-wrap').hidden=n!=='lista';
   setMenu(false);
   window.scrollTo(0,0);
@@ -648,7 +651,7 @@ async function vaiRegione(reg){
       nota='Non sono riuscito a cercare altre fonti, ti propongo quelle di base.';
     }
   }else{
-    nota='Ti propongo le fonti di base. Per la ricerca automatica delle mostre serve una chiave API personale («Chiave API» qui sotto).';
+    nota='Ti propongo le fonti di base. Per la ricerca automatica delle mostre serve una chiave API personale: la inserisci con l\'icona della chiave in basso.';
   }
   if(ctl.signal.aborted)return;
   S.fonti[reg]=fonti;fontiNota=nota;persist();
@@ -658,12 +661,10 @@ async function vaiRegione(reg){
 function renderFonti(){
   const reg=S.regione,list=S.fonti[reg]||(S.fonti[reg]=[]);
   const el=screens.fonti;
-  const go=h('button',{class:'btn',type:'button',onclick:()=>cercaMostre()});
   const cnt=h('span',{class:'meta'});
   function upd(){
     const n=list.filter(f=>f.attiva).length;
-    go.textContent='Avvia la ricerca';
-    go.disabled=n===0;
+    const g=document.getElementById('dk-go');if(g)g.disabled=n===0;
     cnt.textContent=n+(n===1?' fonte scelta':' fonti scelte');
   }
   const ul=h('ul',{class:'src'},list.map((f,i)=>h('li',{},
@@ -695,14 +696,14 @@ function renderFonti(){
   el.replaceChildren(
     h('h2',{class:'h2',text:'Fonti · '+reg}),
     h('p',{class:'lead',text:'Scegli dove cercare le mostre. Puoi togliere quelle che non ti servono e aggiungere altri siti.'}),
-    fontiNota?h('p',{class:'lead',text:fontiNota}):null,
+    ...(fontiNota?[h('p',{class:'lead',text:fontiNota})]:[]),
     h('div',{class:'sel-all'},cnt,
       h('button',{class:'link',type:'button',text:'Tutte',onclick:()=>{list.forEach(f=>f.attiva=true);persist();renderFonti()}}),
       h('button',{class:'link',type:'button',text:'Nessuna',onclick:()=>{list.forEach(f=>f.attiva=false);persist();renderFonti()}})
     ),
     ul,
     form,hint,
-    h('div',{class:'actions'},go,btn('Indietro',()=>{mostreRegione().length?vaiLista():goHome()},'btn ghost'),hasClaude?null:btn(getKey()?'Chiave API ✓':'Chiave API',()=>apriKey(),'btn ghost'))
+    h('div',{class:'dock-space','aria-hidden':'true'})
   );
   upd();
 }
@@ -770,7 +771,21 @@ const ICONE={
   novita:SV('<path d="M12 3.500l1.900 5.600 5.600 1.900-5.600 1.900L12 18.500l-1.900-5.600-5.600-1.900 5.600-1.900z"/><path d="M18.500 17.500v3M17 19h3"/>'),
   preferite:SV('<path d="M12 20.5C12 20.5 3 15.2 3 9a4.5 4.5 0 0 1 9-1.5A4.5 4.5 0 0 1 21 9c0 6.2-9 11.5-9 11.5z"/>')
 };
+function dockFonti(){
+  const n=(S.fonti[S.regione]||[]).filter(f=>f.attiva).length;
+  const mk=(t,d,fn,extra)=>{
+    const b=h('button',{type:'button',class:'dk','aria-label':t,title:t,onclick:fn,...(extra||{})});
+    b.innerHTML=SV(d);return b;
+  };
+  const out=[
+    mk('Avvia la ricerca','<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',()=>cercaMostre(),{id:'dk-go',disabled:n===0?true:null}),
+    mk('Indietro','<path d="M19 12H5M11 6l-6 6 6 6"/>',()=>{mostreRegione().length?vaiLista():goHome()})
+  ];
+  if(!hasClaude)out.push(mk(getKey()?'Chiave API salvata':'Chiave API','<circle cx="8" cy="15" r="3.5"/><path d="M10.5 12.5L20 3M16 7l3 3M14 9l2 2"/>',()=>apriKey(),{'aria-pressed':String(!!getKey())}));
+  return out;
+}
 function renderDock(){
+  if(cur==='fonti'){$('#dock-in').replaceChildren(...dockFonti());return}
   $('#dock-in').replaceChildren(...FILTRI.map(([k,t])=>{
     const b=h('button',{type:'button',class:'dk','aria-label':t,title:t,'aria-pressed':String(ui.filtro===k),onclick:()=>{
       ui.filtro=k;closeSheet();renderDock();if(cur==='lista')renderItems();
@@ -1239,7 +1254,7 @@ function apriKey(){
   $('#kpop').hidden=false;document.body.classList.add('lock');
   $('#k-key').focus({preventScroll:true});
 }
-function chiudiKey(){$('#kpop').hidden=true;document.body.classList.remove('lock')}
+function chiudiKey(){$('#kpop').hidden=true;document.body.classList.remove('lock');if(cur==='fonti')renderDock()}
 $('#k-cancel').addEventListener('click',chiudiKey);
 $('#k-del').addEventListener('click',()=>{setKey('');chiudiKey();toast('Chiave rimossa')});
 $('#kpop-form').addEventListener('submit',e=>{
