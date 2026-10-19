@@ -240,6 +240,20 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 </div>
 <input type="file" id="file-in" accept=".zip,.json,application/zip,application/json" hidden>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="pop" id="kpop" hidden>
+  <div class="pop-bd" aria-hidden="true"></div>
+  <form class="pop-card" id="kpop-form" role="dialog" aria-modal="true" aria-labelledby="kpop-title" novalidate>
+    <h2 class="pop-title" id="kpop-title">Ricerca automatica</h2>
+    <p class="p-note">Per cercare le mostre sul web ClickArt usa la tua chiave API di Anthropic. La chiave resta solo su questo dispositivo e viene inviata solo ad Anthropic. Ogni ricerca ha un piccolo costo a tuo carico. La crei su console.anthropic.com.</p>
+    <label class="f"><span class="lab">Chiave API</span><input id="k-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-ant-…"></label>
+    <p class="hint" id="k-hint" role="status"></p>
+    <div class="actions">
+      <button class="btn" type="submit">Salva</button>
+      <button class="btn ghost" type="button" id="k-del" hidden>Rimuovi</button>
+      <button class="btn ghost" type="button" id="k-cancel">Annulla</button>
+    </div>
+  </form>
+</div>
 <div class="pop" id="pop" hidden>
   <div class="pop-bd" aria-hidden="true"></div>
   <form class="pop-card" id="pop-form" role="dialog" aria-modal="true" aria-labelledby="pop-title" novalidate>
@@ -454,7 +468,50 @@ function mostreRegione(){return S.mostre.filter(m=>m.regione===S.regione)}
 /* ---------- capacità della pagina ---------- */
 const hasClaude=typeof window.claude==='object'&&window.claude&&typeof window.claude.use==='function';
 function useCap(n){return hasClaude?Promise.resolve(window.claude.use(n)).catch(()=>null):Promise.resolve(null)}
-const samplePromise=useCap('sample');
+const claudeSample=useCap('sample');
+const KEYK='clickart.key',MODELLO='claude-haiku-5-5';
+function getKey(){try{return localStorage.getItem(KEYK)||''}catch(e){return ''}}
+function setKey(v){try{v?localStorage.setItem(KEYK,v):localStorage.removeItem(KEYK)}catch(e){}}
+function estraiJson(t){
+  t=String(t||'');
+  for(const [a,b] of [['[',']'],['{','}']]){
+    const fine=t.lastIndexOf(b);
+    for(let i=t.indexOf(a);i>=0&&i<fine;i=t.indexOf(a,i+1)){
+      try{return JSON.parse(t.slice(i,fine+1))}catch(e){}
+    }
+  }
+  throw {code:'invalid_json'};
+}
+function apiSample(key){
+  return{web:true,async json(prompt,opt){
+    opt=opt||{};
+    let messages=[{role:'user',content:prompt}],testo='';
+    for(let i=0;i<4;i++){
+      let r;
+      try{
+        r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal:opt.signal,
+          headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+          body:JSON.stringify({model:MODELLO,max_tokens:8000,tools:[{type:'web_search_20250305',name:'web_search',max_uses:8}],messages})});
+      }catch(e){if(e&&e.name==='AbortError')throw e;throw{code:'rete'}}
+      if(r.status===401||r.status===403)throw{code:'chiave'};
+      if(r.status===429)throw{code:'rate_limited'};
+      if(!r.ok){
+        let m='';try{m=JSON.stringify(await r.json())}catch(e){}
+        throw{code:/credit/i.test(m)?'crediti':'api'};
+      }
+      const d=await r.json();
+      testo=(d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+      if(d.stop_reason==='pause_turn'){messages=messages.concat([{role:'assistant',content:d.content}]);continue}
+      break;
+    }
+    return estraiJson(testo);
+  }};
+}
+function getSample(){
+  if(hasClaude)return claudeSample;
+  const k=getKey();
+  return Promise.resolve(k?apiSample(k):null);
+}
 const downloadsPromise=useCap('downloads');
 async function initDb(){
   try{
@@ -544,7 +601,7 @@ const VOCI=[
   ['Importa backup',()=>$('#file-in').click()],
   ['Fonti',()=>{fontiNota='';renderFonti();show('fonti')}],
   ['Cambia regione',()=>goHome()]
-];
+].concat(hasClaude?[]:[['Ricerca automatica',()=>apriKey()]]);
 $('#menu').replaceChildren(...VOCI.map(([t,fn],i)=>h('button',{type:'button',role:'menuitem',class:i===3?'sep':null,text:t,onclick:()=>{setMenu(false);fn()}})));
 $('#menu-btn').addEventListener('click',()=>{
   const open=$('#menu').hidden;
@@ -573,9 +630,9 @@ async function vaiRegione(reg){
     actions:[btn('Annulla',()=>{ctl.abort();goHome()},'btn ghost')]
   });
   let fonti=baseFonti(reg),nota='';
-  const sample=await samplePromise;
+  const sample=await getSample();
   if(ctl.signal.aborted)return;
-  if(sample){
+  if(sample&&!sample.web){
     try{
       const out=await sample.json(promptFonti(reg,fonti),{modelTier:'quick',signal:ctl.signal});
       const known=new Set(fonti.map(f=>host(f.url)));
@@ -591,7 +648,7 @@ async function vaiRegione(reg){
       nota='Non sono riuscito a cercare altre fonti, ti propongo quelle di base.';
     }
   }else{
-    nota='La ricerca con Claude non è disponibile qui: ti propongo le fonti di base.';
+    nota='Ti propongo le fonti di base. Per la ricerca automatica delle mostre serve una chiave API personale («Chiave API» qui sotto).';
   }
   if(ctl.signal.aborted)return;
   S.fonti[reg]=fonti;fontiNota=nota;persist();
@@ -645,26 +702,29 @@ function renderFonti(){
     ),
     ul,
     form,hint,
-    h('div',{class:'actions'},go,btn('Indietro',()=>{mostreRegione().length?vaiLista():goHome()},'btn ghost'))
+    h('div',{class:'actions'},go,btn('Indietro',()=>{mostreRegione().length?vaiLista():goHome()},'btn ghost'),hasClaude?null:btn(getKey()?'Chiave API ✓':'Chiave API',()=>apriKey(),'btn ghost'))
   );
   upd();
 }
 
 /* ---------- ricerca delle mostre ---------- */
-function promptMostre(reg,fonti,gia){
+function promptMostre(reg,fonti,gia,web){
   return `Sei il motore di ricerca di ClickArt, un'app che raccoglie le mostre d'arte e di fotografia in Italia.
 Data di oggi: ${oggi()}. Regione: ${reg}.
 Fonti scelte dall'utente:
 ${fonti.map(f=>'- '+f.nome+' ('+f.url+')').join('\n')}
 Elenca le mostre d'arte e di fotografia in corso oggi o in programma nei prossimi mesi in ${reg}, tra quelle che queste fonti e queste sedi presentano.
-Non hai accesso al web e non puoi controllare i siti. Includi solo mostre di cui conosci con ragionevole certezza titolo, sede e date. Se non sei sicuro di una mostra o delle sue date, non includerla. Non inventare nulla: un elenco breve ma esatto è meglio di uno lungo. Escludi le mostre già concluse prima di oggi.
+${web?'Usa la ricerca web: consulta i siti delle fonti indicate e le pagine ufficiali delle sedi, e riporta solo mostre di cui hai letto titolo, sede e date. Se non trovi con certezza le date, non includere la mostra. Non inventare nulla.':'Non hai accesso al web e non puoi controllare i siti. Includi solo mostre di cui conosci con ragionevole certezza titolo, sede e date. Se non sei sicuro di una mostra o delle sue date, non includerla. Non inventare nulla: un elenco breve ma esatto è meglio di uno lungo.'} Escludi le mostre già concluse prima di oggi.
 ${gia.length?'Mostre già presenti, da non ripetere: '+gia.slice(0,80).join('; ')+'.':''}
-Rispondi solo con un array JSON di al massimo 25 oggetti con questi campi: "titolo", "tipo" ("arte" oppure "fotografia"), "luogo" (nome della sede), "indirizzo" (via e numero civico), "citta", "dal" e "al" (date AAAA-MM-GG), "descrizione" (al massimo 280 caratteri), "fonte" (nome della fonte), "url" (pagina della mostra o della sede, solo se la conosci con certezza, altrimenti stringa vuota).`;
+Rispondi alla fine solo con un array JSON (nessun altro testo dopo) di al massimo 25 oggetti con questi campi: "titolo", "tipo" ("arte" oppure "fotografia"), "luogo" (nome della sede), "indirizzo" (via e numero civico), "citta", "dal" e "al" (date AAAA-MM-GG), "descrizione" (al massimo 280 caratteri), "fonte" (nome della fonte), "url" (pagina della mostra o della sede, solo se la conosci con certezza, altrimenti stringa vuota).`;
 }
 function erroreMsg(e){
   const c=e&&e.code;
   if(c==='not_granted'||c==='sampling_disabled')return 'ClickArt non ha il permesso di usare Claude per cercare. Consentilo e riprova.';
   if(c==='rate_limited')return 'Hai raggiunto il limite di richieste. Riprova più tardi.';
+  if(c==='chiave')return 'La chiave API non è valida. Controllala dal menu, voce «Ricerca automatica».';
+  if(c==='crediti')return 'Il credito del tuo account Anthropic è esaurito. Ricaricalo su console.anthropic.com.';
+  if(c==='rete')return 'Non riesco a collegarmi. Controlla la connessione e riprova.';
   if(c==='invalid_json')return 'Claude non ha restituito un elenco leggibile. Riprova.';
   return 'La ricerca non è andata a buon fine. Riprova tra poco.';
 }
@@ -673,10 +733,10 @@ async function cercaMostre(){
   const fonti=(S.fonti[reg]||[]).filter(f=>f.attiva);
   if(!fonti.length){toast('Scegli almeno una fonte.');return}
   const indietro=()=>mostreRegione().length?vaiLista():(renderFonti(),show('fonti'));
-  const sample=await samplePromise;
+  const sample=await getSample();
   if(!sample){
-    busy('Ricerca non disponibile',hasClaude?'La ricerca automatica funziona quando ClickArt è aperta in Claude. Da qui puoi comunque importare un backup o un elenco di mostre.':'La ricerca automatica non è disponibile in questa versione. Aggiungi le mostre incollando il link di una pagina con il tasto +, oppure importa un backup.',{
-      bar:false,actions:[btn("Vai all'elenco",()=>vaiLista()),btn('Fonti',()=>{renderFonti();show('fonti')},'btn ghost')]
+    busy('Ricerca non disponibile',hasClaude?'La ricerca automatica funziona quando ClickArt è aperta in Claude. Da qui puoi comunque importare un backup o un elenco di mostre.':'Per cercare in automatico serve una chiave API personale: inseriscila dal menu, voce «Ricerca automatica». Puoi comunque aggiungere mostre incollando un link con il tasto + o importare un backup.',{
+      bar:false,actions:[hasClaude?btn("Vai all'elenco",()=>vaiLista()):btn('Inserisci la chiave',()=>apriKey()),btn("Vai all'elenco",()=>vaiLista(),'btn ghost'),btn('Fonti',()=>{renderFonti();show('fonti')},'btn ghost')]
     });
     return;
   }
@@ -686,13 +746,13 @@ async function cercaMostre(){
   });
   try{
     const gia=mostreRegione().map(m=>m.titolo);
-    const out=await sample.json(promptMostre(reg,fonti,gia),{signal:ctl.signal});
+    const out=await sample.json(promptMostre(reg,fonti,gia,sample.web),{signal:ctl.signal});
     if(ctl.signal.aborted)return;
     const arr=Array.isArray(out)?out:(out&&Array.isArray(out.mostre)?out.mostre:[]);
     const n=mergeMostre(arr.map(r=>normMostra(r,reg)).filter(Boolean));
     S.aggiornato=oggi();persist();
     vaiLista();
-    toast(n?(n===1?'1 mostra aggiunta':n+' mostre aggiunte'):'Nessuna mostra nuova. Dentro l\'app Claude non vede il web: per un elenco verificato chiedigli di cercarle in chat.');
+    toast(n?(n===1?'1 mostra aggiunta':n+' mostre aggiunte'):(sample.web?'Nessuna mostra nuova trovata.':'Nessuna mostra nuova. Dentro l\'app Claude non vede il web: per un elenco verificato chiedigli di cercarle in chat.'));
   }catch(e){
     if(e&&e.code==='cancelled')return;
     busy('Ricerca interrotta',erroreMsg(e),{bar:false,actions:[btn('Riprova',()=>cercaMostre()),btn('Indietro',indietro,'btn ghost')]});
@@ -935,6 +995,7 @@ $('#sheet-bd').addEventListener('click',closeSheet);
 })();
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
+  if(!$('#kpop').hidden){chiudiKey();return}
   if(!$('#pop').hidden){chiudiPop();return}
   setMenu(false);closeSheet();
 });
@@ -1169,6 +1230,26 @@ async function scaricaPagina(url){
   return '';
 }
 
+/* ---------- chiave API (solo versione web) ---------- */
+function apriKey(){
+  closeSheet();
+  $('#kpop-form').reset();$('#k-hint').textContent='';
+  $('#k-del').hidden=!getKey();
+  $('#k-key').placeholder=getKey()?'Chiave salvata. Scrivine una nuova per sostituirla':'sk-ant-…';
+  $('#kpop').hidden=false;document.body.classList.add('lock');
+  $('#k-key').focus({preventScroll:true});
+}
+function chiudiKey(){$('#kpop').hidden=true;document.body.classList.remove('lock')}
+$('#k-cancel').addEventListener('click',chiudiKey);
+$('#k-del').addEventListener('click',()=>{setKey('');chiudiKey();toast('Chiave rimossa')});
+$('#kpop-form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const k=$('#k-key').value.trim();
+  if(!k){chiudiKey();return}
+  if(!/^sk-ant-[\w-]{20,}$/.test(k)){$('#k-hint').textContent='La chiave non sembra valida: inizia con sk-ant-.';return}
+  setKey(k);chiudiKey();toast('Chiave salvata');
+});
+
 /* ---------- aggiungi una mostra da un link ---------- */
 const pop=$('#pop'),pf=$('#pop-form');
 function pHint(t){$('#p-hint').textContent=t||''}
@@ -1177,7 +1258,7 @@ function apriPop(){
   pf.reset();pHint('');
   pop.hidden=false;
   document.body.classList.add('lock');
-  samplePromise.then(s=>{$('#p-ai').hidden=!s});
+  getSample().then(s=>{$('#p-ai').hidden=!(s&&!s.web)});
   $('#p-url').focus({preventScroll:true});
 }
 function chiudiPop(){
@@ -1225,7 +1306,7 @@ Non puoi aprire il link né consultare il web: usa solo il testo incollato e ci�
 Rispondi solo con un oggetto JSON con questi campi: "titolo", "tipo" ("arte" oppure "fotografia"), "luogo" (nome della sede), "indirizzo" (via e numero civico), "citta", "dal" e "al" (date AAAA-MM-GG), "descrizione" (al massimo 280 caratteri).`;
 }
 $('#p-fill').addEventListener('click',async()=>{
-  const sample=await samplePromise;
+  const sample=await getSample();
   if(!sample)return;
   const url=$('#p-url').value.trim(),testo=$('#p-testo').value.trim();
   if(!url&&!testo){pHint('Incolla il link o il testo della pagina.');return}
