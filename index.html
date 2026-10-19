@@ -477,37 +477,68 @@ function getKey(){try{return localStorage.getItem(KEYK)||''}catch(e){return ''}}
 function setKey(v){try{v?localStorage.setItem(KEYK,v):localStorage.removeItem(KEYK)}catch(e){}}
 function estraiJson(t){
   t=String(t||'');
-  for(const [a,b] of [['[',']'],['{','}']]){
+  const prova=(a,b)=>{
     const fine=t.lastIndexOf(b);
     for(let i=t.indexOf(a);i>=0&&i<fine;i=t.indexOf(a,i+1)){
       try{return JSON.parse(t.slice(i,fine+1))}catch(e){}
     }
+  };
+  const arr=prova('[',']');
+  if(arr!==undefined)return arr;
+  /* risposta tagliata a metà: recupero gli oggetti completi dell'elenco */
+  const i=t.indexOf('[');
+  if(i>=0){
+    for(let f=t.lastIndexOf('}');f>i;f=t.lastIndexOf('}',f-1)){
+      try{const r=JSON.parse(t.slice(i,f+1)+']');if(Array.isArray(r)&&r.length)return r}catch(e){}
+    }
   }
-  throw {code:'invalid_json'};
+  const obj=prova('{','}');
+  if(obj!==undefined)return obj;
+  throw{code:'invalid_json',detail:t.trim().slice(0,160)};
 }
 function apiSample(key){
+  async function chiama(body,signal){
+    let r;
+    try{
+      r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal,
+        headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:MODELLO,...body})});
+    }catch(e){if(e&&e.name==='AbortError')throw e;throw{code:'rete'}}
+    if(r.status===401||r.status===403)throw{code:'chiave'};
+    if(r.status===429)throw{code:'rate_limited'};
+    if(!r.ok){
+      let m='';try{m=JSON.stringify(await r.json())}catch(e){}
+      throw{code:/credit/i.test(m)?'crediti':'api',detail:m.slice(0,160)};
+    }
+    return r.json();
+  }
+  /* testo della risposta finale: solo i blocchi dopo l'ultima ricerca web */
+  function testoFinale(content){
+    let da=0;
+    (content||[]).forEach((b,i)=>{if(b.type!=='text')da=i+1});
+    const finale=(content||[]).slice(da).filter(b=>b.type==='text').map(b=>b.text).join('');
+    return finale.trim()?finale:(content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+  }
   return{web:true,async json(prompt,opt){
     opt=opt||{};
-    let messages=[{role:'user',content:prompt}],testo='';
+    let messages=[{role:'user',content:prompt}],testo='',stop='';
     for(let i=0;i<4;i++){
-      let r;
-      try{
-        r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal:opt.signal,
-          headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-          body:JSON.stringify({model:MODELLO,max_tokens:8000,tools:[{type:'web_search_20250305',name:'web_search',max_uses:opt.maxUses||8}],messages})});
-      }catch(e){if(e&&e.name==='AbortError')throw e;throw{code:'rete'}}
-      if(r.status===401||r.status===403)throw{code:'chiave'};
-      if(r.status===429)throw{code:'rate_limited'};
-      if(!r.ok){
-        let m='';try{m=JSON.stringify(await r.json())}catch(e){}
-        throw{code:/credit/i.test(m)?'crediti':'api'};
-      }
-      const d=await r.json();
-      testo=(d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
-      if(d.stop_reason==='pause_turn'){messages=messages.concat([{role:'assistant',content:d.content}]);continue}
+      const d=await chiama({max_tokens:16000,tools:[{type:'web_search_20250305',name:'web_search',max_uses:opt.maxUses||8}],messages},opt.signal);
+      testo=testoFinale(d.content);stop=d.stop_reason;
+      if(stop==='pause_turn'){messages=messages.concat([{role:'assistant',content:d.content}]);continue}
       break;
     }
-    return estraiJson(testo);
+    try{return estraiJson(testo)}
+    catch(e){
+      if(!testo.trim())throw e;
+      /* seconda chiamata, senza web: chiedo solo di riscrivere il risultato come JSON */
+      const d=await chiama({max_tokens:8000,messages:[
+        {role:'user',content:prompt},
+        {role:'assistant',content:testo.slice(0,20000)},
+        {role:'user',content:'Riscrivi il risultato come un solo array JSON valido, senza altro testo. Se non hai trovato mostre, rispondi con [].'}
+      ]},opt.signal);
+      return estraiJson((d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join(''));
+    }
   }};
 }
 function getGen(){try{return localStorage.getItem('clickart.gen')!=='0'}catch(e){return true}}
@@ -724,7 +755,7 @@ ${fonti.length?fonti.map(f=>'- '+f.nome+' ('+f.url+')').join('\n'):'(nessuna: us
 Elenca le mostre d'arte e di fotografia in corso oggi o in programma nei prossimi mesi in ${reg}, tra quelle che queste fonti e queste sedi presentano.
 ${web?'Usa la ricerca web: consulta i siti delle fonti indicate e le pagine ufficiali delle sedi, e riporta solo mostre di cui hai letto titolo, sede e date. Se non trovi con certezza le date, non includere la mostra. Non inventare nulla.':'Non hai accesso al web e non puoi controllare i siti. Includi solo mostre di cui conosci con ragionevole certezza titolo, sede e date. Se non sei sicuro di una mostra o delle sue date, non includerla. Non inventare nulla: un elenco breve ma esatto è meglio di uno lungo.'} Escludi le mostre già concluse prima di oggi.${web&&gen?"\nFai anche una ricerca generale sul web, oltre alle fonti indicate: cerca mostre d'arte e di fotografia in "+reg+" presentate da musei, gallerie, fondazioni, comuni, festival e portali di eventi, e includi quelle di cui trovi titolo, sede e date. Nel campo \"fonte\" scrivi il sito dove le hai trovate.":''}
 ${gia.length?'Mostre già presenti, da non ripetere: '+gia.slice(0,80).join('; ')+'.':''}
-Rispondi alla fine solo con un array JSON (nessun altro testo dopo) di al massimo 25 oggetti con questi campi: "titolo", "tipo" ("arte" oppure "fotografia"), "luogo" (nome della sede), "indirizzo" (via e numero civico), "citta", "dal" e "al" (date AAAA-MM-GG), "descrizione" (al massimo 280 caratteri), "fonte" (nome della fonte), "url" (pagina della mostra o della sede, solo se la conosci con certezza, altrimenti stringa vuota).`;
+Rispondi alla fine solo con un array JSON (senza blocchi di codice e senza altro testo dopo) di al massimo 20 oggetti con questi campi: "titolo", "tipo" ("arte" oppure "fotografia"), "luogo" (nome della sede), "indirizzo" (via e numero civico), "citta", "dal" e "al" (date AAAA-MM-GG), "descrizione" (al massimo 160 caratteri), "fonte" (nome della fonte), "url" (pagina della mostra o della sede, solo se la conosci con certezza, altrimenti stringa vuota).`;
 }
 function erroreMsg(e){
   const c=e&&e.code;
@@ -733,7 +764,7 @@ function erroreMsg(e){
   if(c==='chiave')return 'La chiave API non è valida. Controllala dal menu, voce «Ricerca automatica».';
   if(c==='crediti')return 'Il credito del tuo account Anthropic è esaurito. Ricaricalo su console.anthropic.com.';
   if(c==='rete')return 'Non riesco a collegarmi. Controlla la connessione e riprova.';
-  if(c==='invalid_json')return 'Claude non ha restituito un elenco leggibile. Riprova.';
+  if(c==='invalid_json')return 'Claude non ha restituito un elenco leggibile. Riprova.'+(e&&e.detail?' Risposta ricevuta: «'+e.detail+'»':'');
   return 'La ricerca non è andata a buon fine. Riprova tra poco.';
 }
 async function cercaMostre(){
