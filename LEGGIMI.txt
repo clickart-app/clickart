@@ -1,0 +1,20 @@
+ClickArt – pubblicazione su GitHub Pages
+
+1. Su GitHub crea un repository (per esempio "clickart") e carica TUTTI i file di questa cartella
+   nella radice: index.html, manifest.webmanifest, sw.js, apple-touch-icon.png e la cartella icons.
+2. Settings > Pages > Source: "Deploy from a branch", ramo main, cartella / (root).
+3. Apri l'indirizzo che GitHub ti mostra e installa l'app dal menu del browser.
+
+Una app per indirizzo: se sullo stesso indirizzo github.io hai già un'altra PWA (per esempio
+la vecchia app Mostre), Chrome per Android non le installa entrambe. Metti ClickArt in una
+organizzazione GitHub gratuita (Settings > Danger Zone > Transfer ownership) oppure al posto
+della vecchia app, e disinstalla/reinstalla dal telefono.
+
+Come funziona il link: incolla l'indirizzo di una pagina nel popup "+" e ClickArt legge titolo,
+sede, indirizzo, città e date. Prova prima la pagina direttamente e, se il sito non lo consente,
+passa da un servizio di lettura pubblico (allorigins.win, corsproxy.io): l'indirizzo della pagina
+viene quindi inviato a quei servizi. Se la pagina non contiene i dati in modo leggibile, i campi
+restano vuoti e li completi a mano. Controlla sempre i dati prima di premere Aggiungi.
+
+Per portare qui le mostre della versione in Claude: Menu > Backup nella vecchia, poi Menu >
+Importa backup in questa.
