@@ -81,8 +81,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .tag{font-style:italic;color:var(--muted);margin:14px 0 0}
 .h2{font-family:var(--display);font-weight:500;font-size:clamp(30px,7vw,40px);line-height:1.1;letter-spacing:-.01em;margin:0 0 10px;text-wrap:balance}
 .lead{color:var(--muted);margin:0 0 20px;max-width:60ch}
-.meta .sel{color:var(--accent)}
-.meta{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.meta .fsel{color:var(--accent)}
+.meta{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-variant-ligatures:none;font-feature-settings:"liga" 0,"clig" 0,"calt" 0,"dlig" 0,"swsh" 0,"cswh" 0,"hist" 0;font-variant-caps:normal}
 .hint{color:var(--accent);min-height:1.5em}
 
 /* home */
@@ -905,7 +905,7 @@ function renderLista(){
 function metaNodi(){
   const all=mostreRegione();
   const f=(FILTRI.find(x=>x[0]===ui.filtro)||FILTRI[0])[1];
-  return[all.length+(all.length===1?' mostra':' mostre')+(S.aggiornato?' · aggiornato il '+fmtLong.format(parse(S.aggiornato)):'')+' · ',h('span',{class:'sel',text:f})];
+  return[all.length+(all.length===1?' mostra':' mostre')+(S.aggiornato?' · aggiornato il '+fmtLong.format(parse(S.aggiornato)):'')+' · ',h('span',{class:'fsel',text:f})];
 }
 function renderItems(){
   const box=$('#items');
