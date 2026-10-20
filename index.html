@@ -81,6 +81,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .tag{font-style:italic;color:var(--muted);margin:14px 0 0}
 .h2{font-family:var(--display);font-weight:500;font-size:clamp(30px,7vw,40px);line-height:1.1;letter-spacing:-.01em;margin:0 0 10px;text-wrap:balance}
 .lead{color:var(--muted);margin:0 0 20px;max-width:60ch}
+.meta .sel{color:var(--accent)}
 .meta{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .hint{color:var(--accent);min-height:1.5em}
 
@@ -195,6 +196,13 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .s-dl a{color:var(--fg);text-underline-offset:4px}
 .s-dl a:hover{color:var(--accent)}
 .s-desc{margin:0 0 24px;max-width:62ch}
+.s-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.s-icons{display:flex;gap:8px}
+.s-ic{width:44px;height:44px;flex:none;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--fg);display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none}
+.s-ic svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.s-ic[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+.s-ic[aria-pressed="true"] svg{fill:currentColor}
+@media (hover:hover){.s-ic:hover{color:var(--accent);border-color:var(--accent)}}
 .s-act{display:flex;flex-wrap:wrap;gap:10px}
 .s-note{margin:22px 0 0;font-size:15px;color:var(--muted)}
 
@@ -887,23 +895,22 @@ function vaiLista(){renderLista();show('lista')}
 function renderLista(){
   purgeNow();
   const all=mostreRegione();
-  const sub=metaTesto();
   repl(screens.lista,
     h('h2',{class:'h2',text:S.regione}),
-    h('div',{class:'meta',id:'meta-l',text:sub}),
+    h('div',{class:'meta',id:'meta-l'},metaNodi()),
     h('div',{id:'items',class:'items'})
   );
   renderItems();
 }
-function metaTesto(){
+function metaNodi(){
   const all=mostreRegione();
   const f=(FILTRI.find(x=>x[0]===ui.filtro)||FILTRI[0])[1];
-  return all.length+(all.length===1?' mostra':' mostre')+(S.aggiornato?' · aggiornato il '+fmtLong.format(parse(S.aggiornato)):'')+' · '+f;
+  return[all.length+(all.length===1?' mostra':' mostre')+(S.aggiornato?' · aggiornato il '+fmtLong.format(parse(S.aggiornato)):'')+' · ',h('span',{class:'sel',text:f})];
 }
 function renderItems(){
   const box=$('#items');
   const all=mostreRegione();
-  const mt=$('#meta-l');if(mt)mt.textContent=metaTesto();
+  const mt=$('#meta-l');if(mt)mt.replaceChildren(...metaNodi());
   const list=all.filter(passa).sort((a,b)=>a.al<b.al?-1:a.al>b.al?1:a.titolo.localeCompare(b.titolo,'it'));
   if(!list.length){
     const msg=!all.length?(hasClaude?'Non ci sono ancora mostre. Premi «Aggiorna mostre» per cercarle, oppure importa un backup.':'Non ci sono ancora mostre. Avvia la ricerca dal menu, voce «Fonti», aggiungine una con il tasto + oppure importa un backup. Dopo la prima ricerca, l\'aggiornamento è automatico ogni mese.')
@@ -1028,9 +1035,14 @@ function openSheet(m,from){
   opener=from||null;
   clearTimeout(closeT);
   const luogo=[m.luogo,[m.indirizzo,m.citta].filter(Boolean).join(', ')].filter(Boolean);
-  const share=h('button',{class:'btn ghost',type:'button',text:'Condividi',onclick:()=>condividi(m)});
-  const fav=h('button',{class:'btn ghost',type:'button','aria-pressed':String(S.preferiti.includes(m.id))});
-  const setFav=()=>{fav.textContent=S.preferiti.includes(m.id)?'Tra le preferite':'Salva nei preferiti';fav.setAttribute('aria-pressed',String(S.preferiti.includes(m.id)))};
+  const share=h('button',{class:'s-ic',type:'button','aria-label':'Condividi',title:'Condividi',onclick:()=>condividi(m)});
+  share.innerHTML=SV('<path d="M12 15V3M8 7l4-4 4 4"/><path d="M8 11H6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2"/>');
+  const haMaps=!!(m.luogo||m.indirizzo||m.citta);
+  const maps=haMaps?h('a',{class:'s-ic',href:mapsUrl(m),target:'_blank',rel:'noopener noreferrer','aria-label':'Apri in Maps',title:'Apri in Maps'}):null;
+  if(maps)maps.innerHTML=SV('<path d="M12 21s-7-6.1-7-11.4a7 7 0 0 1 14 0C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.6" r="2.5"/>');
+  const fav=h('button',{class:'s-ic fv',type:'button'});
+  fav.innerHTML=HEART;
+  const setFav=()=>{const p=S.preferiti.includes(m.id);fav.setAttribute('aria-pressed',String(p));fav.setAttribute('aria-label',p?'Togli dalle preferite':'Salva nei preferiti');fav.title=p?'Togli dalle preferite':'Salva nei preferiti'};
   fav.addEventListener('click',()=>{toggleFav(m);setFav();renderItems()});
   setFav();
   const rows=[];
@@ -1040,16 +1052,11 @@ function openSheet(m,from){
     rows.push(h('div',{},h('dt',{text:'Fonte'}),h('dd',{},m.url?h('a',{href:m.url,target:'_blank',rel:'noopener noreferrer',text:m.fonte||host(m.url)}):m.fonte)));
   }
   repl($('#sheet-body'),
-    h('div',{},h('span',{class:'tipo'+(m.tipo==='fotografia'?' foto':''),text:m.tipo==='fotografia'?'Fotografia':'Arte'}),isNew(m)?h('span',{class:'nuova',text:'Nuova'}):null),
+    h('div',{class:'s-top'},h('div',{},h('span',{class:'tipo'+(m.tipo==='fotografia'?' foto':''),text:m.tipo==='fotografia'?'Fotografia':'Arte'}),isNew(m)?h('span',{class:'nuova',text:'Nuova'}):null),h('div',{class:'s-icons'},fav,maps,share)),
     h('h2',{class:'s-title',id:'sheet-title'},m.url?h('a',{href:m.url,target:'_blank',rel:'noopener noreferrer',title:'Apri la pagina della mostra',text:m.titolo}):m.titolo),
     h('p',{class:'s-per',text:periodo(m)}),
     h('dl',{class:'s-dl'},rows),
     m.descrizione?h('p',{class:'s-desc',text:m.descrizione}):null,
-    h('div',{class:'s-act'},
-      (m.luogo||m.indirizzo||m.citta)?h('a',{class:'btn',href:mapsUrl(m),target:'_blank',rel:'noopener noreferrer',text:'Apri in Maps'}):null,
-      share,
-      fav
-    ),
     h('p',{class:'s-note',text:'Controlla date e orari sul sito della sede prima di andare.'})
   );
   sheet.hidden=false;
