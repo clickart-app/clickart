@@ -196,9 +196,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .s-dl a{color:var(--fg);text-underline-offset:4px}
 .s-dl a:hover{color:var(--accent)}
 .s-desc{margin:0 0 24px;max-width:62ch}
-.s-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.s-icons{display:flex;gap:8px}
-.s-ic{width:44px;height:44px;flex:none;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--fg);display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none}
+.s-top{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap}
+.s-icons{display:flex;gap:6px;margin-left:auto}
+.s-ic{width:40px;height:40px;flex:none;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--fg);display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none}
 .s-ic svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .s-ic[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
 .s-ic[aria-pressed="true"] svg{fill:currentColor}
@@ -288,12 +288,13 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   <form class="pop-card" id="pop-form" role="dialog" aria-modal="true" aria-labelledby="pop-title" novalidate>
     <h2 class="pop-title" id="pop-title">Aggiungi una mostra</h2>
     <label class="f"><span class="lab">Link della pagina</span><input id="p-url" type="text" inputmode="url" autocomplete="off" autocapitalize="off" placeholder="https://"></label>
-    <button class="btn ghost sm" type="button" id="p-leggi">Leggi il link</button>
+    <button class="btn ghost sm" type="button" id="p-leggi" hidden>Leggi il link</button>
     <div class="p-ai" id="p-ai" hidden>
       <label class="f"><span class="lab">Testo della pagina (facoltativo)</span><textarea id="p-testo" rows="3" placeholder="Copia il testo della pagina e incollalo qui"></textarea></label>
       <p class="p-note">Claude non può aprire il link. Con il testo della pagina ricava titolo, sede e date; senza, compila a mano.</p>
       <button class="btn ghost sm" type="button" id="p-fill">Compila con Claude</button>
     </div>
+    <div id="p-campi" hidden>
     <label class="f"><span class="lab">Titolo</span><input id="p-titolo" type="text" autocomplete="off"></label>
     <label class="f"><span class="lab">Tipo</span><select id="p-tipo"><option value="arte">Arte</option><option value="fotografia">Fotografia</option></select></label>
     <label class="f"><span class="lab">Sede</span><input id="p-luogo" type="text" autocomplete="off" placeholder="Museo, galleria o palazzo"></label>
@@ -304,8 +305,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
       <label class="f"><span class="lab">Al</span><input id="p-al" type="date"></label>
     </div>
     <label class="f"><span class="lab">Descrizione (facoltativa)</span><textarea id="p-desc" rows="2" maxlength="320"></textarea></label>
+    </div>
     <div class="actions">
-      <button class="btn" type="submit">Aggiungi</button>
+      <button class="btn" type="submit" id="p-ok">Aggiungi</button>
       <button class="btn ghost" type="button" id="p-cancel">Annulla</button>
     </div>
     <p class="hint" id="p-hint" role="status"></p>
@@ -1040,6 +1042,8 @@ function openSheet(m,from){
   const haMaps=!!(m.luogo||m.indirizzo||m.citta);
   const maps=haMaps?h('a',{class:'s-ic',href:mapsUrl(m),target:'_blank',rel:'noopener noreferrer','aria-label':'Apri in Maps',title:'Apri in Maps'}):null;
   if(maps)maps.innerHTML=SV('<path d="M12 21s-7-6.1-7-11.4a7 7 0 0 1 14 0C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.6" r="2.5"/>');
+  const modif=h('button',{class:'s-ic',type:'button','aria-label':'Modifica',title:'Modifica',onclick:()=>apriModifica(m)});
+  modif.innerHTML=SV('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>');
   const fav=h('button',{class:'s-ic fv',type:'button'});
   fav.innerHTML=HEART;
   const setFav=()=>{const p=S.preferiti.includes(m.id);fav.setAttribute('aria-pressed',String(p));fav.setAttribute('aria-label',p?'Togli dalle preferite':'Salva nei preferiti');fav.title=p?'Togli dalle preferite':'Salva nei preferiti'};
@@ -1052,7 +1056,7 @@ function openSheet(m,from){
     rows.push(h('div',{},h('dt',{text:'Fonte'}),h('dd',{},m.url?h('a',{href:m.url,target:'_blank',rel:'noopener noreferrer',text:m.fonte||host(m.url)}):m.fonte)));
   }
   repl($('#sheet-body'),
-    h('div',{class:'s-top'},h('div',{},h('span',{class:'tipo'+(m.tipo==='fotografia'?' foto':''),text:m.tipo==='fotografia'?'Fotografia':'Arte'}),isNew(m)?h('span',{class:'nuova',text:'Nuova'}):null),h('div',{class:'s-icons'},fav,maps,share)),
+    h('div',{class:'s-top'},h('div',{},h('span',{class:'tipo'+(m.tipo==='fotografia'?' foto':''),text:m.tipo==='fotografia'?'Fotografia':'Arte'}),isNew(m)?h('span',{class:'nuova',text:'Nuova'}):null),h('div',{class:'s-icons'},fav,maps,share,modif)),
     h('h2',{class:'s-title',id:'sheet-title'},m.url?h('a',{href:m.url,target:'_blank',rel:'noopener noreferrer',title:'Apri la pagina della mostra',text:m.titolo}):m.titolo),
     h('p',{class:'s-per',text:periodo(m)}),
     h('dl',{class:'s-dl'},rows),
@@ -1391,13 +1395,31 @@ $('#kpop-form').addEventListener('submit',e=>{
 /* ---------- aggiungi una mostra da un link ---------- */
 const pop=$('#pop'),pf=$('#pop-form');
 function pHint(t){$('#p-hint').textContent=t||''}
+let editM=null,leggiP=null;
+function modoPop(modifica){
+  $('#p-campi').hidden=!modifica;
+  $('#pop-title').textContent=modifica?'Modifica la mostra':'Aggiungi una mostra';
+  $('#p-ok').textContent=modifica?'Salva':'Aggiungi';
+}
 function apriPop(){
   closeSheet();
-  pf.reset();pHint('');
+  editM=null;leggiP=null;leggiN++;
+  pf.reset();pHint('');modoPop(false);
   pop.hidden=false;
   document.body.classList.add('lock');
   $('#p-ai').hidden=true;
   $('#p-url').focus({preventScroll:true});
+}
+function apriModifica(m){
+  closeSheet();
+  editM=m;leggiP=null;leggiN++;
+  pf.reset();pHint('');modoPop(true);
+  $('#p-url').value=m.url||'';$('#p-titolo').value=m.titolo;$('#p-tipo').value=m.tipo;
+  $('#p-luogo').value=m.luogo||'';$('#p-indirizzo').value=m.indirizzo||'';$('#p-citta').value=m.citta||'';
+  $('#p-dal').value=m.dal||'';$('#p-al').value=m.al||'';$('#p-desc').value=m.descrizione||'';
+  pop.hidden=false;
+  document.body.classList.add('lock');
+  $('#p-ai').hidden=true;
 }
 function chiudiPop(){
   pop.hidden=true;
@@ -1460,8 +1482,8 @@ async function leggiLink(){
   hintFinale();
 }
 $('#p-leggi').addEventListener('click',leggiLink);
-$('#p-url').addEventListener('paste',()=>setTimeout(leggiLink,50));
-$('#p-url').addEventListener('change',leggiLink);
+$('#p-url').addEventListener('paste',()=>setTimeout(()=>{if(!editM)leggiP=leggiLink()},50));
+$('#p-url').addEventListener('change',()=>{if(!editM)leggiP=leggiLink()});
 function promptPagina(url,testo){
   return `Ricava i dati di una mostra d'arte o di fotografia. Oggi è ${oggi()}.
 Indirizzo della pagina della mostra: ${url||'(non indicato)'}
@@ -1501,23 +1523,44 @@ $('#p-fill').addEventListener('click',async()=>{
     b.disabled=false;b.textContent='Compila con Claude';
   }
 });
-pf.addEventListener('submit',e=>{
+pf.addEventListener('submit',async e=>{
   e.preventDefault();
+  const modifica=!!editM;
   let u=$('#p-url').value.trim();
   if(u&&!/^https?:\/\//i.test(u))u='https://'+u;
   const url=u?okUrl(u):'';
   if(u&&!url){pHint('Il link non sembra valido.');$('#p-url').focus();return}
+  const ok=$('#p-ok');
+  if(!modifica){
+    if(!url){pHint('Incolla il link della pagina della mostra.');$('#p-url').focus();return}
+    if(!$('#p-titolo').value){
+      ok.disabled=true;
+      try{await (leggiP||(leggiP=leggiLink()))}catch(e){}
+      ok.disabled=false;
+      if(pop.hidden)return;
+    }
+  }
+  const rivela=t=>{$('#p-campi').hidden=false;pHint(t)};
   const titolo=str($('#p-titolo').value,140);
-  if(!titolo){pHint('Scrivi il titolo della mostra.');$('#p-titolo').focus();return}
+  if(!titolo){rivela('Non sono riuscito a leggere la pagina. Scrivi il titolo e i dati della mostra.');$('#p-titolo').focus();return}
   const al=validDate($('#p-al').value);
-  if(!al){pHint('Indica la data di fine della mostra.');$('#p-al').focus();return}
-  if(al<oggi()){pHint('Questa mostra è già finita.');$('#p-al').focus();return}
+  if(!al){rivela('Non ho trovato la data di fine: indicala qui sotto.');$('#p-al').focus();return}
+  if(al<oggi()){rivela('Questa mostra è già finita.');$('#p-al').focus();return}
   const m=normMostra({
     titolo,tipo:$('#p-tipo').value,luogo:$('#p-luogo').value,indirizzo:$('#p-indirizzo').value,citta:$('#p-citta').value,
     dal:$('#p-dal').value,al,descrizione:$('#p-desc').value,
-    fonte:url?host(url):'Aggiunta da te',url,regione:S.regione,aggiunta:oggi()
+    fonte:url?host(url):'Aggiunta da te',url,regione:modifica?editM.regione:S.regione,aggiunta:modifica?editM.aggiunta:oggi()
   },S.regione);
-  if(!m){pHint('Non riesco ad aggiungere questa mostra. Controlla i dati.');return}
+  if(!m){rivela('Non riesco ad aggiungere questa mostra. Controlla i dati.');return}
+  if(modifica){
+    if(S.mostre.some(x=>x!==editM&&(x.id===m.id||k2(x)===k2(m)))){pHint("Esiste già un'altra mostra uguale.");return}
+    const id=editM.id;
+    Object.assign(editM,m,{id,fonte:url?(url===editM.url?editM.fonte:host(url)):editM.fonte});
+    persist();chiudiPop();renderLista();toast('Mostra modificata');
+    openSheet(editM,null);
+    editM=null;
+    return;
+  }
   if(S.mostre.some(x=>x.id===m.id||k2(x)===k2(m))){pHint("Questa mostra c'è già nell'elenco.");return}
   S.escluse=S.escluse.filter(k=>k!==k2(m));
   S.mostre.push(m);
@@ -1544,7 +1587,6 @@ initDb();
 setTimeout(avviaAuto,1200);
 })();
 </script>
-
 <script>
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}
 </script>
