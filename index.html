@@ -27,18 +27,19 @@
   --rule:#0c0c0c;
   --accent:#7a1620;
   --on-accent:#ffffff;
+  --sheet:#f4f4f2;
   --veil:rgba(0,0,0,.42);
   --display:'Bodoni Moda','Didot','Bodoni 72',Georgia,'Times New Roman',serif;
   --serif:'EB Garamond','Cormorant Garamond',Georgia,'Times New Roman',serif;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#0b0b0b;--fg:#f3f3f1;--muted:#a3a3a0;--line:#2c2c2c;--rule:#f3f3f1;--accent:#d4525e;--on-accent:#0b0b0b;
+    --bg:#0b0b0b;--fg:#f3f3f1;--muted:#a3a3a0;--line:#2c2c2c;--rule:#f3f3f1;--accent:#d4525e;--on-accent:#0b0b0b;--sheet:#161616;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0b0b0b;--fg:#f3f3f1;--muted:#a3a3a0;--line:#2c2c2c;--rule:#f3f3f1;--accent:#d4525e;--on-accent:#0b0b0b;
+  --bg:#0b0b0b;--fg:#f3f3f1;--muted:#a3a3a0;--line:#2c2c2c;--rule:#f3f3f1;--accent:#d4525e;--on-accent:#0b0b0b;--sheet:#161616;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -94,13 +95,16 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 
 /* bottoni */
 .btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 22px;background:var(--fg);color:var(--bg);border:1px solid var(--fg);border-radius:0;font-size:17px;letter-spacing:.04em;cursor:pointer;text-decoration:none;line-height:1.2}
-.btn:hover,.btn:focus-visible{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn:focus-visible{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+@media (hover:hover){.btn:hover{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}}
 .btn:disabled{opacity:.35;cursor:not-allowed;background:var(--fg);border-color:var(--fg);color:var(--bg)}
 .btn.ghost{background:transparent;color:var(--fg);border-color:var(--fg)}
-.btn.ghost:hover,.btn.ghost:focus-visible{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btn.ghost:focus-visible{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+@media (hover:hover){.btn.ghost:hover{background:var(--fg);color:var(--bg);border-color:var(--fg)}}
 .btn.sm{min-height:40px;padding:8px 16px;font-size:16px}
 .link{background:none;border:0;padding:6px 0;cursor:pointer;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px;color:var(--fg);font-size:16px}
-.link:hover,.link:focus-visible{color:var(--accent)}
+.link:focus-visible{color:var(--accent)}
+@media (hover:hover){.link:hover{color:var(--accent)}}
 
 /* attesa */
 .bar{position:relative;height:2px;background:var(--line);overflow:hidden;margin:6px 0 24px;max-width:420px}
@@ -161,8 +165,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .del{position:absolute;left:0;top:0;bottom:0;width:76px;border:0;border-radius:0;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;cursor:pointer}
 .del svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .row .open{flex:1;min-width:0;background:none;border:0;padding:16px 8px 16px 0;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:6px}
-.row .open:hover .t,.row .open:focus-visible .t{color:var(--accent)}
-.t{font-family:var(--display);font-weight:500;font-size:clamp(20px,4.6vw,24px);line-height:1.2;letter-spacing:-.005em;overflow-wrap:anywhere;text-wrap:balance}
+@media (hover:hover){.row .open:hover .t{color:var(--accent)}}
+.t{font-family:var(--display);font-weight:600;font-size:clamp(20px,4.6vw,24px);line-height:1.2;letter-spacing:-.005em;overflow-wrap:anywhere;text-wrap:balance}
 .tipo{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
 .tipo.foto{font-style:italic}
 .nuova{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-left:12px}
@@ -176,12 +180,12 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 /* scheda dal basso */
 .sheet{position:fixed;inset:0;z-index:50}
 .backdrop{position:absolute;inset:0;background:var(--veil);opacity:0;transition:opacity .28s ease}
-.panel{position:absolute;left:0;right:0;bottom:0;max-height:90%;overflow-y:auto;background:var(--bg);border-top:1px solid var(--rule);transform:translateY(100%);transition:transform .3s cubic-bezier(.2,.7,.2,1);overscroll-behavior:contain}
+.panel{position:absolute;left:0;right:0;bottom:0;max-height:90%;overflow-y:auto;background:var(--sheet);border-top:1px solid var(--rule);transform:translateY(100%);transition:transform .3s cubic-bezier(.2,.7,.2,1);overscroll-behavior:contain}
 .sheet.open .backdrop{opacity:1}
 .sheet.open .panel{transform:none}
 .panel-in{max-width:720px;margin:0 auto;padding-block:14px calc(112px + env(safe-area-inset-bottom,0px));padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
 .grab{width:44px;height:2px;background:var(--rule);margin:0 auto 14px;opacity:.5}
-.s-title{font-family:var(--display);font-weight:500;font-size:clamp(28px,7vw,38px);line-height:1.1;letter-spacing:-.01em;margin:10px 0 8px;text-wrap:balance}
+.s-title{font-family:var(--display);font-weight:700;font-size:clamp(28px,7vw,38px);line-height:1.1;letter-spacing:-.01em;margin:10px 0 8px;text-wrap:balance}
 .s-per{font-style:italic;font-size:20px;margin:0 0 20px}
 .s-dl{margin:0 0 20px;border-top:1px solid var(--line)}
 .s-dl div{display:grid;grid-template-columns:84px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
@@ -245,6 +249,17 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 </div>
 <input type="file" id="file-in" accept=".zip,.json,application/zip,application/json" hidden>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="pop" id="cpop" hidden>
+  <div class="pop-bd" aria-hidden="true"></div>
+  <form class="pop-card" id="cpop-form" role="alertdialog" aria-modal="true" aria-labelledby="cpop-title" novalidate>
+    <h2 class="pop-title" id="cpop-title"></h2>
+    <p class="p-note" id="cpop-txt"></p>
+    <div class="actions">
+      <button class="btn" type="submit" id="cpop-ok">Avvia</button>
+      <button class="btn ghost" type="button" id="cpop-no">Annulla</button>
+    </div>
+  </form>
+</div>
 <div class="pop" id="kpop" hidden>
   <div class="pop-bd" aria-hidden="true"></div>
   <form class="pop-card" id="kpop-form" role="dialog" aria-modal="true" aria-labelledby="kpop-title" novalidate>
@@ -837,7 +852,7 @@ function dockFonti(){
     b.innerHTML=SV(d);return b;
   };
   const out=[
-    mk('Avvia la ricerca','<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',()=>cercaMostre(),{id:'dk-go',disabled:n===0?true:null}),
+    mk('Avvia la ricerca','<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',()=>chiediRicerca(),{id:'dk-go',disabled:n===0?true:null}),
     mk('Indietro','<path d="M19 12H5M11 6l-6 6 6 6"/>',()=>{mostreRegione().length?vaiLista():goHome()})
   ];
   if(!hasClaude)out.push(mk(getKey()?'Chiave API salvata':'Chiave API','<circle cx="8" cy="15" r="3.5"/><path d="M10.5 12.5L20 3M16 7l3 3M14 9l2 2"/>',()=>apriKey(),{'aria-pressed':String(!!getKey())}));
@@ -872,17 +887,23 @@ function vaiLista(){renderLista();show('lista')}
 function renderLista(){
   purgeNow();
   const all=mostreRegione();
-  const sub=all.length+(all.length===1?' mostra':' mostre')+(S.aggiornato?' · aggiornato il '+fmtLong.format(parse(S.aggiornato)):'');
+  const sub=metaTesto();
   repl(screens.lista,
     h('h2',{class:'h2',text:S.regione}),
-    h('div',{class:'meta',text:sub}),
+    h('div',{class:'meta',id:'meta-l',text:sub}),
     h('div',{id:'items',class:'items'})
   );
   renderItems();
 }
+function metaTesto(){
+  const all=mostreRegione();
+  const f=(FILTRI.find(x=>x[0]===ui.filtro)||FILTRI[0])[1];
+  return all.length+(all.length===1?' mostra':' mostre')+(S.aggiornato?' · aggiornato il '+fmtLong.format(parse(S.aggiornato)):'')+' · '+f;
+}
 function renderItems(){
   const box=$('#items');
   const all=mostreRegione();
+  const mt=$('#meta-l');if(mt)mt.textContent=metaTesto();
   const list=all.filter(passa).sort((a,b)=>a.al<b.al?-1:a.al>b.al?1:a.titolo.localeCompare(b.titolo,'it'));
   if(!list.length){
     const msg=!all.length?(hasClaude?'Non ci sono ancora mostre. Premi «Aggiorna mostre» per cercarle, oppure importa un backup.':'Non ci sono ancora mostre. Avvia la ricerca dal menu, voce «Fonti», aggiungine una con il tasto + oppure importa un backup. Dopo la prima ricerca, l\'aggiornamento è automatico ogni mese.')
@@ -993,10 +1014,21 @@ function periodo(m){
   if(m.dal>oggi())return 'Dal '+fmtLong.format(parse(m.dal))+' al '+al;
   return 'In corso, fino al '+al;
 }
+async function condividi(m){
+  const dove=[m.luogo,m.citta].filter(Boolean).join(', ');
+  const testo=[m.titolo,dove,periodo(m)].filter(Boolean).join('\n');
+  const link=m.url||((m.luogo||m.indirizzo||m.citta)?mapsUrl(m):'');
+  try{
+    if(navigator.share){await navigator.share(link?{title:m.titolo,text:testo,url:link}:{title:m.titolo,text:testo});return}
+  }catch(e){if(e&&e.name==='AbortError')return}
+  try{await navigator.clipboard.writeText(testo+(link?'\n'+link:''));toast('Copiato negli appunti')}
+  catch(e){toast('Non riesco a condividere questa mostra')}
+}
 function openSheet(m,from){
   opener=from||null;
   clearTimeout(closeT);
   const luogo=[m.luogo,[m.indirizzo,m.citta].filter(Boolean).join(', ')].filter(Boolean);
+  const share=h('button',{class:'btn ghost',type:'button',text:'Condividi',onclick:()=>condividi(m)});
   const fav=h('button',{class:'btn ghost',type:'button','aria-pressed':String(S.preferiti.includes(m.id))});
   const setFav=()=>{fav.textContent=S.preferiti.includes(m.id)?'Tra le preferite':'Salva nei preferiti';fav.setAttribute('aria-pressed',String(S.preferiti.includes(m.id)))};
   fav.addEventListener('click',()=>{toggleFav(m);setFav();renderItems()});
@@ -1015,6 +1047,7 @@ function openSheet(m,from){
     m.descrizione?h('p',{class:'s-desc',text:m.descrizione}):null,
     h('div',{class:'s-act'},
       (m.luogo||m.indirizzo||m.citta)?h('a',{class:'btn',href:mapsUrl(m),target:'_blank',rel:'noopener noreferrer',text:'Apri in Maps'}):null,
+      share,
       fav
     ),
     h('p',{class:'s-note',text:'Controlla date e orari sul sito della sede prima di andare.'})
@@ -1069,6 +1102,7 @@ $('#sheet-bd').addEventListener('click',closeSheet);
 })();
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
+  if(!$('#cpop').hidden){chiudiConf(false);return}
   if(!$('#kpop').hidden){chiudiKey();return}
   if(!$('#pop').hidden){chiudiPop();return}
   setMenu(false);closeSheet();
@@ -1305,6 +1339,26 @@ async function scaricaPagina(url){
   return '';
 }
 
+/* ---------- conferma ---------- */
+let cRis=null;
+function conferma(titolo,testo,ok){
+  $('#cpop-title').textContent=titolo;$('#cpop-txt').textContent=testo;$('#cpop-ok').textContent=ok||'Avvia';
+  $('#cpop').hidden=false;document.body.classList.add('lock');
+  $('#cpop-ok').focus({preventScroll:true});
+  return new Promise(r=>{cRis=r});
+}
+function chiudiConf(v){
+  $('#cpop').hidden=true;document.body.classList.remove('lock');
+  const r=cRis;cRis=null;if(r)r(v);
+}
+$('#cpop-no').addEventListener('click',()=>chiudiConf(false));
+$('#cpop-form').addEventListener('submit',e=>{e.preventDefault();chiudiConf(true)});
+async function chiediRicerca(){
+  const reg=S.regione,n=(S.fonti[reg]||[]).filter(f=>f.attiva).length;
+  const parti=[n?(n===1?'la fonte scelta':'le '+n+' fonti scelte'):null,(!hasClaude&&getGen())?'una ricerca generale sul web':null].filter(Boolean).join(' e ');
+  const testo='Cerco le mostre in '+reg+(parti?' con '+parti:'')+'. Può richiedere un minuto'+(hasClaude?'.':' e ha un piccolo costo a carico della tua chiave API.');
+  if(await conferma('Avviare la ricerca?',testo,'Avvia'))cercaMostre();
+}
 /* ---------- chiave API (solo versione web) ---------- */
 function apriKey(){
   closeSheet();
