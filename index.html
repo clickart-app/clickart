@@ -251,6 +251,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
     <h2 class="pop-title" id="kpop-title">Ricerca automatica</h2>
     <p class="p-note">Per cercare le mostre sul web ClickArt usa la tua chiave API di Anthropic. La chiave resta solo su questo dispositivo e viene inviata solo ad Anthropic. Ogni ricerca ha un piccolo costo a tuo carico. La crei su console.anthropic.com.</p>
     <label class="f"><span class="lab">Chiave API</span><input id="k-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-ant-…"></label>
+    <label class="chk gen"><input id="k-auto" type="checkbox"><span class="src-t"><span class="src-n">Aggiornamento mensile</span><span class="src-m">La prima volta che apri l'app ogni mese cerca da sola le nuove mostre. Ogni ricerca ha un costo.</span></span></label>
     <p class="hint" id="k-hint" role="status"></p>
     <div class="actions">
       <button class="btn" type="submit">Salva</button>
@@ -453,6 +454,18 @@ function purge(){
 }
 function purgeNow(){const n=purge();if(n)persist();return n}
 function k2(m){return norm(m.titolo)+'|'+norm(m.luogo||m.citta)}
+function meseOra(){return oggi().slice(0,7)}
+function autoOn(){try{return localStorage.getItem('clickart.automese')!=='0'}catch(e){return false}}
+function setAutoOn(v){try{localStorage.setItem('clickart.automese',v?'1':'0')}catch(e){}}
+function segnaMese(){try{localStorage.setItem('clickart.auto',meseOra())}catch(e){}}
+async function avviaAuto(){
+  if(hasClaude||!autoOn()||!S.regione||!getKey()||navigator.onLine===false)return;
+  let ult='';
+  try{ult=localStorage.getItem('clickart.auto')||''}catch(e){return}
+  if(!ult){segnaMese();return}
+  if(ult>=meseOra())return;
+  await cercaMostre(true);
+}
 let mergeAgg=0;
 function mergeMostre(list,aggiorna){
   const seen=new Set(S.mostre.map(k2).concat(S.escluse));
@@ -640,14 +653,13 @@ function setMenu(open){
   $('#menu').hidden=!open;
   $('#menu-btn').setAttribute('aria-expanded',String(open));
 }
-const VOCI=[
-  ['Aggiorna mostre',()=>aggiorna()],
+const VOCI=(hasClaude?[['Aggiorna mostre',()=>aggiorna()]]:[]).concat([
   ['Backup',()=>backup()],
   ['Importa backup',()=>$('#file-in').click()],
   ['Fonti',()=>{fontiNota='';renderFonti();show('fonti')}],
   ['Cambia regione',()=>goHome()]
-].concat(hasClaude?[]:[['Ricerca automatica',()=>apriKey()]]);
-$('#menu').replaceChildren(...VOCI.map(([t,fn],i)=>h('button',{type:'button',role:'menuitem',class:i===3?'sep':null,text:t,onclick:()=>{setMenu(false);fn()}})));
+]).concat(hasClaude?[]:[['Ricerca automatica',()=>apriKey()]]);
+$('#menu').replaceChildren(...VOCI.map(([t,fn],i)=>h('button',{type:'button',role:'menuitem',class:t==='Fonti'?'sep':null,text:t,onclick:()=>{setMenu(false);fn()}})));
 $('#menu-btn').addEventListener('click',()=>{
   const open=$('#menu').hidden;
   setMenu(open);
@@ -772,12 +784,14 @@ function erroreMsg(e){
   if(c==='invalid_json')return 'Claude non ha restituito un elenco leggibile. Riprova.'+(e&&e.detail?' Risposta ricevuta: «'+e.detail+'»':'');
   return 'La ricerca non è andata a buon fine. Riprova tra poco.';
 }
-async function cercaMostre(){
+async function cercaMostre(auto){
+  if(auto!==true)auto=false;
   const reg=S.regione;
   const fonti=(S.fonti[reg]||[]).filter(f=>f.attiva);
-  if(!fonti.length&&!soloGen()){toast('Scegli almeno una fonte.');return}
+  if(!fonti.length&&!soloGen()){if(!auto)toast('Scegli almeno una fonte.');return}
   const indietro=()=>mostreRegione().length?vaiLista():(renderFonti(),show('fonti'));
   const sample=await getSample();
+  if(!sample&&auto)return;
   if(!sample){
     busy('Ricerca non disponibile',hasClaude?'La ricerca automatica funziona quando ClickArt è aperta in Claude. Da qui puoi comunque importare un backup o un elenco di mostre.':'Per cercare in automatico serve una chiave API personale: inseriscila dal menu, voce «Ricerca automatica». Puoi comunque aggiungere mostre incollando un link con il tasto + o importare un backup.',{
       bar:false,actions:[hasClaude?btn("Vai all'elenco",()=>vaiLista()):btn('Inserisci la chiave',()=>apriKey()),btn("Vai all'elenco",()=>vaiLista(),'btn ghost'),btn('Fonti',()=>{renderFonti();show('fonti')},'btn ghost')]
@@ -785,7 +799,8 @@ async function cercaMostre(){
     return;
   }
   const ctl=new AbortController();
-  busy('Cerco le mostre · '+reg,(fonti.length?'Sto cercando con '+(fonti.length===1?'la fonte scelta':'le '+fonti.length+' fonti scelte'):'Sto facendo una ricerca generale')+(sample.web&&getGen()&&fonti.length?' e con una ricerca generale sul web':'')+'. Può richiedere un minuto.',{
+  if(auto){toast('Aggiornamento mensile delle mostre in corso…');clearTimeout(toastT);}
+  else busy('Cerco le mostre · '+reg,(fonti.length?'Sto cercando con '+(fonti.length===1?'la fonte scelta':'le '+fonti.length+' fonti scelte'):'Sto facendo una ricerca generale')+(sample.web&&getGen()&&fonti.length?' e con una ricerca generale sul web':'')+'. Può richiedere un minuto.',{
     actions:[btn('Annulla',()=>{ctl.abort();indietro()},'btn ghost')]
   });
   try{
@@ -795,10 +810,11 @@ async function cercaMostre(){
     const arr=Array.isArray(out)?out:(out&&Array.isArray(out.mostre)?out.mostre:[]);
     const n=mergeMostre(arr.map(r=>normMostra(r,reg)).filter(Boolean));
     S.aggiornato=oggi();persist();
-    vaiLista();
+    if(auto){segnaMese();if(cur==='lista')renderLista()}else vaiLista();
     toast(n?(n===1?'1 mostra aggiunta':n+' mostre aggiunte'):(sample.web?'Nessuna mostra nuova trovata.':'Nessuna mostra nuova. Dentro l\'app Claude non vede il web: per un elenco verificato chiedigli di cercarle in chat.'));
   }catch(e){
     if(e&&e.code==='cancelled')return;
+    if(auto){toast('Aggiornamento mensile non riuscito. '+erroreMsg(e));return}
     busy('Ricerca interrotta',erroreMsg(e),{bar:false,actions:[btn('Riprova',()=>cercaMostre()),btn('Indietro',indietro,'btn ghost')]});
   }
 }
@@ -869,9 +885,9 @@ function renderItems(){
   const all=mostreRegione();
   const list=all.filter(passa).sort((a,b)=>a.al<b.al?-1:a.al>b.al?1:a.titolo.localeCompare(b.titolo,'it'));
   if(!list.length){
-    const msg=!all.length?'Non ci sono ancora mostre. Premi «Aggiorna mostre» per cercarle, oppure importa un backup.'
+    const msg=!all.length?(hasClaude?'Non ci sono ancora mostre. Premi «Aggiorna mostre» per cercarle, oppure importa un backup.':'Non ci sono ancora mostre. Avvia la ricerca dal menu, voce «Fonti», aggiungine una con il tasto + oppure importa un backup. Dopo la prima ricerca, l\'aggiornamento è automatico ogni mese.')
       :ui.filtro==='preferite'?'Nessuna mostra tra le preferite. Tocca il cuore accanto a una mostra per salvarla.'
-      :ui.filtro==='novita'?'Nessuna novità negli ultimi 14 giorni.':'Nessuna mostra in questa vista.';
+      :ui.filtro==='novita'?'Nessuna novità negli ultimi 7 giorni.':'Nessuna mostra in questa vista.';
     box.replaceChildren(h('p',{class:'empty',text:msg}));
     return;
   }
@@ -1294,6 +1310,7 @@ function apriKey(){
   closeSheet();
   $('#kpop-form').reset();$('#k-hint').textContent='';
   $('#k-del').hidden=!getKey();
+  $('#k-auto').checked=autoOn();
   $('#k-key').placeholder=getKey()?'Chiave salvata. Scrivine una nuova per sostituirla':'sk-ant-…';
   $('#kpop').hidden=false;document.body.classList.add('lock');
   $('#k-key').focus({preventScroll:true});
@@ -1304,6 +1321,7 @@ $('#k-del').addEventListener('click',()=>{setKey('');chiudiKey();toast('Chiave r
 $('#kpop-form').addEventListener('submit',e=>{
   e.preventDefault();
   const k=$('#k-key').value.trim();
+  setAutoOn($('#k-auto').checked);
   if(!k){chiudiKey();return}
   if(!/^sk-ant-[\w-]{20,}$/.test(k)){$('#k-hint').textContent='La chiave non sembra valida: inizia con sk-ant-.';return}
   setKey(k);chiudiKey();toast('Chiave salvata');
@@ -1432,6 +1450,7 @@ document.addEventListener('visibilitychange',()=>{
 });
 window.addEventListener('pagehide',flush);
 initDb();
+setTimeout(avviaAuto,1200);
 })();
 </script>
 
