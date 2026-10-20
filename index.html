@@ -453,11 +453,14 @@ function purge(){
 }
 function purgeNow(){const n=purge();if(n)persist();return n}
 function k2(m){return norm(m.titolo)+'|'+norm(m.luogo||m.citta)}
-function mergeMostre(list){
+let mergeAgg=0;
+function mergeMostre(list,aggiorna){
   const seen=new Set(S.mostre.map(k2).concat(S.escluse));
-  let n=0;
+  const esist=new Map(S.mostre.map(x=>[k2(x),x]));
+  let n=0;mergeAgg=0;
   for(const m of list){
     const k=k2(m);
+    if(aggiorna&&m.url&&esist.has(k)&&esist.get(k).url!==m.url){esist.get(k).url=m.url;mergeAgg++}
     if(seen.has(k))continue;
     seen.add(k);S.mostre.push(m);n++;
   }
@@ -1134,7 +1137,8 @@ $('#file-in').addEventListener('change',async e=>{
     if(!lista)throw new Error('formato');
     const regBackup=(!Array.isArray(data)&&REGIONI.includes(data.regione))?data.regione:'';
     if(!S.regione&&regBackup)S.regione=regBackup;
-    const n=mergeMostre(lista.map(r=>normMostra(r,(r&&REGIONI.includes(r.regione))?r.regione:(regBackup||S.regione))).filter(m=>m&&m.regione));
+    const n=mergeMostre(lista.map(r=>normMostra(r,(r&&REGIONI.includes(r.regione))?r.regione:(regBackup||S.regione))).filter(m=>m&&m.regione),true);
+    const agg=mergeAgg;
     if(!Array.isArray(data)){
       for(const k of (Array.isArray(data.escluse)?data.escluse:[]))if(typeof k==='string'&&!S.escluse.includes(k))S.escluse.push(k);
       const ids=new Set(S.mostre.map(m=>m.id));
@@ -1150,7 +1154,7 @@ $('#file-in').addEventListener('change',async e=>{
     }
     persist();
     if(!S.regione){goHome()}else{vaiLista()}
-    toast(n?'Backup importato: '+n+(n===1?' mostra nuova':' mostre nuove'):'Backup importato, nessuna mostra nuova');
+    toast((n?'Backup importato: '+n+(n===1?' mostra nuova':' mostre nuove'):'Backup importato, nessuna mostra nuova')+(agg?' · '+agg+(agg===1?' link aggiornato':' link aggiornati'):''));
   }catch(err){toast('Il file non è un backup di ClickArt valido')}
 });
 
