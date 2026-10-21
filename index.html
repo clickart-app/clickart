@@ -81,7 +81,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 /* testi */
 .lab{display:block;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
 .tag{font-style:italic;color:var(--muted);margin:14px 0 0}
-.h2{font-family:var(--regione);font-weight:500;font-size:clamp(30px,7vw,40px);line-height:1.1;letter-spacing:-.005em;margin:0 0 10px;text-wrap:balance}
+.h2{font-family:var(--regione);font-weight:700;color:var(--accent);font-size:clamp(30px,7vw,40px);line-height:1.1;letter-spacing:-.005em;margin:0 0 10px;text-wrap:balance}
 .lead{color:var(--muted);margin:0 0 20px;max-width:60ch}
 .meta .fsel{color:var(--accent)}
 .meta{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-variant-ligatures:none;font-feature-settings:"liga" 0,"clig" 0,"calt" 0,"dlig" 0,"swsh" 0,"cswh" 0,"hist" 0;font-variant-caps:normal}
@@ -114,13 +114,16 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .bar::before{content:"";position:absolute;inset:0 auto 0 0;width:34%;background:var(--accent);animation:run 1.5s cubic-bezier(.5,.1,.3,.9) infinite}
 @keyframes run{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
 
+.back{width:44px;height:44px;margin:6px 0 0 -10px;background:none;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--fg)}
+.back svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+@media (hover:hover){.back:hover{color:var(--accent)}}
 /* fonti */
 .src{list-style:none;margin:18px 0 0;padding:0;border-top:1px solid var(--rule)}
 .src li{display:flex;align-items:flex-start;gap:12px;border-bottom:1px solid var(--line);padding:12px 0}
 .chk{display:flex;gap:14px;align-items:flex-start;flex:1;min-width:0;cursor:pointer}
 .chk input{width:20px;height:20px;margin:3px 0 0;accent-color:var(--accent);flex:none}
 .src-t{display:flex;flex-direction:column;min-width:0}
-.src-n{font-family:var(--display);font-weight:500;font-size:19px;line-height:1.25;overflow-wrap:anywhere}
+.src-n{font-family:var(--titolo);font-weight:600;font-size:17px;line-height:1.3;letter-spacing:-.01em;overflow-wrap:anywhere}
 .src-m{font-size:15px;color:var(--muted);overflow-wrap:anywhere}
 .src .link{font-size:14px;flex:none;color:var(--muted)}
 .addf{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;margin-top:26px}
@@ -228,6 +231,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   </header>
 
   <section id="s-home">
+    <button type="button" class="back" id="home-back" aria-label="Indietro" title="Indietro" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
     <h1 class="mark big">Click<i>Art</i><span class="dot" aria-hidden="true"></span></h1>
     <p class="tag">Mostre d'arte e di fotografia, regione per regione.</p>
     <form id="f-regione" novalidate>
@@ -662,8 +666,13 @@ function busy(titolo,msg,opts){
 function goHome(){
   $('#hint-home').textContent='';
   if(S.regione)$('#regione').value=S.regione;
+  $('#home-back').hidden=!(S.regione&&(mostreRegione().length||(S.fonti[S.regione]||[]).length));
   show('home');
 }
+$('#home-back').addEventListener('click',()=>{
+  if(mostreRegione().length)vaiLista();
+  else if((S.fonti[S.regione]||[]).length){fontiNota='';renderFonti();show('fonti')}
+});
 function submitHome(){
   const v=$('#regione').value;
   if(!v){$('#hint-home').textContent='Scegli prima una regione.';$('#regione').focus();return}
@@ -692,7 +701,18 @@ $('#menu-btn').addEventListener('click',()=>{
   setMenu(open);
   if(open)$('#menu button').focus();
 });
-document.addEventListener('click',e=>{if(!$('#menu-wrap').contains(e.target))setMenu(false)});
+/* un tocco fuori dal menù lo chiude subito, senza aprire ciò che sta sotto */
+let ingoia=false;
+document.addEventListener('pointerdown',e=>{
+  if($('#menu').hidden||$('#menu-wrap').contains(e.target))return;
+  setMenu(false);ingoia=true;setTimeout(()=>{ingoia=false},450);
+},true);
+document.addEventListener('click',e=>{
+  if(ingoia&&!$('#menu-wrap').contains(e.target)){ingoia=false;e.stopPropagation();e.preventDefault();return}
+  if(!$('#menu-wrap').contains(e.target))setMenu(false);
+},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')setMenu(false)});
+window.addEventListener('scroll',()=>setMenu(false),{passive:true});
 
 /* ---------- ricerca delle fonti ---------- */
 let fontiNota='';
