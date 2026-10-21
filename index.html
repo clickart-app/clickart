@@ -69,7 +69,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:40;background:var(--bg);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0 10px;border-bottom:1px solid var(--rule);margin-bottom:24px}
 .top #top-home{background:none;border:0;padding:0;cursor:pointer;text-align:left}
 .items{margin-top:22px}
-.menu-wrap{position:relative}
+.menu-wrap{position:relative;display:flex;align-items:center}
+.menu-wrap #gita-btn{margin-right:0}
+#gita-btn[aria-pressed="true"]{color:var(--accent)}
 .burger{width:44px;height:44px;margin-right:-10px;background:none;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--fg)}
 .burger svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
 .burger[aria-expanded="true"],.burger:hover{color:var(--accent)}
@@ -119,6 +121,13 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 @media (hover:hover){.back:hover{color:var(--accent)}}
 .g-prec{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 10px}
 .g-prec .btn{font-size:14px}
+/* gita fuori porta: pagina che arriva da destra */
+.gpage{position:fixed;inset:0;z-index:110;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;transform:translateX(100%);transition:transform .3s cubic-bezier(.2,.7,.2,1);box-shadow:-8px 0 28px rgba(0,0,0,.14);padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.gpage.open{transform:none}
+.gp-in{max-width:720px;margin:0 auto;padding-bottom:40px}
+.gp-h{margin-top:30px}
+.gp-n{font-size:15px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.gpage{transition:none}}
 /* fonti */
 .src{list-style:none;margin:18px 0 0;padding:0;border-top:1px solid var(--rule)}
 .src li{display:flex;align-items:flex-start;gap:12px;border-bottom:1px solid var(--line);padding:12px 0}
@@ -227,6 +236,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   <header class="top" id="top" hidden>
     <button type="button" id="top-home" aria-label="ClickArt, torna alla scelta della regione"><span class="mark sm">Click<i>Art</i><span class="dot" aria-hidden="true"></span></span></button>
     <div class="menu-wrap" id="menu-wrap" hidden>
+      <button type="button" class="burger" id="gita-btn" aria-label="Gita fuori porta" title="Gita fuori porta"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="8" width="16" height="11.5" rx="1.8"/><path d="M9 8V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v2M9 8v11.5M15 8v11.5"/></svg></button>
       <button type="button" class="burger" id="menu-btn" aria-label="Menù" aria-haspopup="true" aria-expanded="false" aria-controls="menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <div class="menu" id="menu" role="menu" hidden></div>
     </div>
@@ -276,24 +286,25 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
     </div>
   </form>
 </div>
-<div class="pop" id="gpop" hidden>
-  <div class="pop-bd" aria-hidden="true"></div>
-  <form class="pop-card" id="gpop-form" role="dialog" aria-modal="true" aria-labelledby="gpop-title" novalidate>
-    <h2 class="pop-title" id="gpop-title">Gita fuori porta</h2>
+<div class="gpage" id="gpage" hidden role="dialog" aria-modal="true" aria-labelledby="gp-t">
+  <div class="gp-in">
+    <button type="button" class="back" id="gp-back" aria-label="Indietro" title="Indietro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
+    <h2 class="h2" id="gp-t" tabindex="-1">Gita fuori porta</h2>
     <p class="p-note">Cerca le mostre in una città fuori dalla tua regione: Roma, Milano, Londra…</p>
-    <label class="f"><span class="lab">Città</span><input id="g-citta" type="text" autocomplete="off" placeholder="Per esempio Roma"></label>
-    <div class="f2">
-      <label class="f"><span class="lab">Dal (facoltativo)</span><input id="g-dal" type="date"></label>
-      <label class="f"><span class="lab">Al (facoltativo)</span><input id="g-al" type="date"></label>
-    </div>
-    <div class="g-prec" id="g-prec" hidden></div>
+    <form id="gpage-form" novalidate>
+      <label class="f"><span class="lab">Città</span><input id="g-citta" type="text" autocomplete="off" placeholder="Per esempio Roma"></label>
+      <div class="f2">
+        <label class="f"><span class="lab">Dal (facoltativo)</span><input id="g-dal" type="date"></label>
+        <label class="f"><span class="lab">Al (facoltativo)</span><input id="g-al" type="date"></label>
+      </div>
+      <div class="actions"><button class="btn" type="submit" id="g-ok">Cerca le mostre</button></div>
+      <p class="hint" id="g-hint" role="status"></p>
+    </form>
     <p class="p-note">La ricerca usa il web e ha un costo. Vengono tenute solo le mostre con un link verificato.</p>
-    <div class="actions">
-      <button class="btn" type="submit">Cerca</button>
-      <button class="btn ghost" type="button" id="g-cancel">Annulla</button>
-    </div>
-    <p class="hint" id="g-hint" role="status"></p>
-  </form>
+    <h3 class="lab gp-h" id="gp-h">Le tue gite</h3>
+    <ul class="list" id="gp-list"></ul>
+    <p class="empty" id="gp-vuoto">Nessuna gita in programma.</p>
+  </div>
 </div>
 <div class="pop" id="kpop" hidden>
   <div class="pop-bd" aria-hidden="true"></div>
@@ -433,7 +444,7 @@ const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').m
 /* ---------- stato e salvataggio ---------- */
 const LS='clickart.v1';
 const MAX_MOSTRE=300;
-function emptyState(){return{regione:'',fonti:{},mostre:[],preferiti:[],escluse:[],aggiornato:''}}
+function emptyState(){return{regione:'',fonti:{},mostre:[],preferiti:[],escluse:[],aggiornato:'',gite:[]}}
 let S=emptyState();
 let touched=false;
 const ui={filtro:'tutte',gita:null};
@@ -481,9 +492,24 @@ function normState(o){
   if(Array.isArray(o.preferiti))s.preferiti=o.preferiti.filter(x=>typeof x==='string');
   if(Array.isArray(o.escluse))s.escluse=o.escluse.filter(x=>typeof x==='string').slice(-500);
   s.aggiornato=validDate(o.aggiornato);
+  if(Array.isArray(o.gite))s.gite=o.gite.map(normGita).filter(Boolean).slice(0,30);
+  sincGite(s);
   return s;
 }
-function cfg(){return{regione:S.regione,fonti:S.fonti,preferiti:S.preferiti,escluse:S.escluse,aggiornato:S.aggiornato}}
+function normGita(g){
+  if(!g||typeof g!=='object')return null;
+  const nome=str(g.nome,60);
+  if(!nome)return null;
+  return{nome,dal:validDate(g.dal),al:validDate(g.al),creata:validDate(g.creata)||oggi()};
+}
+/* ogni mostra con una città di gita deve avere la sua gita nell'elenco */
+function sincGite(st){
+  st=st||S;
+  st.mostre.forEach(m=>{
+    if(m.gita&&!st.gite.some(g=>norm(g.nome)===norm(m.gita)))st.gite.push({nome:m.gita,dal:'',al:'',creata:m.aggiunta||oggi()});
+  });
+}
+function cfg(){return{regione:S.regione,fonti:S.fonti,preferiti:S.preferiti,escluse:S.escluse,aggiornato:S.aggiornato,gite:S.gite}}
 function loadLocal(){try{const t=localStorage.getItem(LS);return t?normState(JSON.parse(t)):emptyState()}catch(e){return emptyState()}}
 function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({...cfg(),mostre:S.mostre}))}catch(e){}}
 function persist(){touched=true;clearTimeout(timer);timer=setTimeout(flush,350)}
@@ -501,6 +527,7 @@ function flush(){
 function purge(){
   const t=oggi(),n=S.mostre.length;
   S.mostre=S.mostre.filter(m=>m.al>=t);
+  S.gite=S.gite.filter(g=>!g.al||g.al>=t);
   const ids=new Set(S.mostre.map(m=>m.id));
   S.preferiti=S.preferiti.filter(id=>ids.has(id));
   return n-S.mostre.length;
@@ -734,13 +761,14 @@ const VOCI=(hasClaude?[['Aggiorna mostre',()=>aggiorna()]]:[]).concat([
   ['Importa backup',()=>$('#file-in').click()],
   ['Fonti',()=>{ui.gita=null;fontiNota='';renderFonti();show('fonti')}],
   ['Cambia regione',()=>goHome()]
-]).concat(hasClaude?[]:[['Gita fuori porta',()=>apriGita()],['Ricerca automatica',()=>apriKey()]]);
+]).concat(hasClaude?[]:[['Ricerca automatica',()=>apriKey()]]);
 function vociMenu(){
   const v=VOCI.slice();
-  if(ui.gita)v.unshift(['Torna a '+S.regione,()=>{ui.gita=null;ui.filtro='tutte';renderDock();vaiLista()}]);
+  if(ui.gita)v.unshift(['Torna a '+S.regione,()=>{ui.gita=null;ui.filtro='tutte';renderDock();vaiLista();disegnaMenu()}]);
   return v;
 }
-function disegnaMenu(){$('#menu').replaceChildren(...vociMenu().map(([t,fn],i)=>h('button',{type:'button',role:'menuitem',class:t==='Fonti'?'sep':null,text:t,onclick:()=>{setMenu(false);fn()}})))}
+function disegnaMenu(){
+  $('#gita-btn').setAttribute('aria-pressed',String(!!ui.gita));$('#menu').replaceChildren(...vociMenu().map(([t,fn],i)=>h('button',{type:'button',role:'menuitem',class:t==='Fonti'?'sep':null,text:t,onclick:()=>{setMenu(false);fn()}})))}
 disegnaMenu();
 $('#menu-btn').addEventListener('click',()=>{
   const open=$('#menu').hidden;
@@ -970,6 +998,7 @@ function passa(m){
 function vaiLista(){renderLista();show('lista')}
 function renderLista(){
   purgeNow();
+  $('#gita-btn').setAttribute('aria-pressed',String(!!ui.gita));
   const all=mostreRegione();
   repl(screens.lista,
     h('h2',{class:'h2',text:ui.gita||S.regione}),
@@ -989,7 +1018,7 @@ function renderItems(){
   const mt=$('#meta-l');if(mt)mt.replaceChildren(...metaNodi());
   const list=all.filter(passa).sort((a,b)=>a.al<b.al?-1:a.al>b.al?1:a.titolo.localeCompare(b.titolo,'it'));
   if(!list.length){
-    const msg=!all.length?(hasClaude?'Non ci sono ancora mostre. Premi «Aggiorna mostre» per cercarle, oppure importa un backup.':'Non ci sono ancora mostre. Avvia la ricerca dal menu, voce «Fonti», aggiungine una con il tasto + oppure importa un backup. Dopo la prima ricerca, l\'aggiornamento è automatico ogni mese.')
+    const msg=ui.gita&&!all.length?'Nessuna mostra trovata a '+ui.gita+'. Riprova la ricerca dalla pagina della valigia, oppure aggiungi un link con il tasto +.':!all.length?(hasClaude?'Non ci sono ancora mostre. Premi «Aggiorna mostre» per cercarle, oppure importa un backup.':'Non ci sono ancora mostre. Avvia la ricerca dal menu, voce «Fonti», aggiungine una con il tasto + oppure importa un backup. Dopo la prima ricerca, l\'aggiornamento è automatico ogni mese.')
       :ui.filtro==='preferite'?'Nessuna mostra tra le preferite. Tocca il cuore accanto a una mostra per salvarla.'
       :ui.filtro==='novita'?'Nessuna novità negli ultimi 7 giorni.':'Nessuna mostra in questa vista.';
     box.replaceChildren(h('p',{class:'empty',text:msg}));
@@ -1189,7 +1218,7 @@ document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   if(!$('#cpop').hidden){chiudiConf(false);return}
   if(!$('#kpop').hidden){chiudiKey();return}
-  if(!$('#gpop').hidden){chiudiGita();return}
+  if(!$('#gpage').hidden){chiudiGita();return}
   if(!$('#pop').hidden){chiudiPop();return}
   setMenu(false);closeSheet();
 });
@@ -1274,6 +1303,8 @@ $('#file-in').addEventListener('change',async e=>{
     const regBackup=(!Array.isArray(data)&&REGIONI.includes(data.regione))?data.regione:'';
     if(!S.regione&&regBackup)S.regione=regBackup;
     const n=mergeMostre(lista.map(r=>normMostra(r,(r&&REGIONI.includes(r.regione))?r.regione:(regBackup||S.regione))).filter(m=>m&&m.regione),true);
+    if(Array.isArray(data.gite))data.gite.map(normGita).filter(Boolean).forEach(g=>{if(!S.gite.some(x=>norm(x.nome)===norm(g.nome)))S.gite.push(g)});
+    sincGite();
     const agg=mergeAgg;
     if(!Array.isArray(data)){
       for(const k of (Array.isArray(data.escluse)?data.escluse:[]))if(typeof k==='string'&&!S.escluse.includes(k))S.escluse.push(k);
@@ -1468,22 +1499,72 @@ $('#kpop-form').addEventListener('submit',e=>{
 });
 
 /* ---------- gita fuori porta ---------- */
-function gitePrecedenti(){
-  const m=new Map();
-  S.mostre.forEach(x=>{if(x.gita&&!m.has(norm(x.gita)))m.set(norm(x.gita),x.gita)});
-  return [...m.values()];
-}
+const gp=$('#gpage');
+let gitaBusy='';
 function apriGita(){
-  closeSheet();
-  $('#gpop-form').reset();$('#g-hint').textContent='';
-  const pr=gitePrecedenti(),box=$('#g-prec');
-  box.hidden=!pr.length;
-  box.replaceChildren(...pr.map(c=>h('button',{type:'button',class:'btn ghost sm',text:c,onclick:()=>{chiudiGita();ui.gita=c;ui.filtro='tutte';renderDock();vaiLista()}})));
-  $('#gpop').hidden=false;document.body.classList.add('lock');
-  $('#g-citta').focus({preventScroll:true});
+  closeSheet();setMenu(false);
+  $('#gpage-form').reset();$('#g-hint').textContent=gitaBusy?'Sto cercando a '+gitaBusy+'…':'';
+  renderGite();
+  gp.hidden=false;void gp.offsetWidth;gp.classList.add('open');
+  document.body.classList.add('lock');
+  gp.scrollTop=0;
 }
-function chiudiGita(){$('#gpop').hidden=true;document.body.classList.remove('lock')}
-$('#g-cancel').addEventListener('click',chiudiGita);
+function chiudiGita(){
+  if(gp.hidden)return;
+  gp.classList.remove('open');
+  document.body.classList.remove('lock');
+  setTimeout(()=>{if(!gp.classList.contains('open'))gp.hidden=true},reduce?0:300);
+}
+$('#gita-btn').addEventListener('click',apriGita);
+$('#gp-back').addEventListener('click',chiudiGita);
+function periodoGita(g){
+  const f=d=>fmtLong.format(parse(d));
+  if(g.dal&&g.al)return 'dal '+f(g.dal)+' al '+f(g.al);
+  if(g.dal)return 'dal '+f(g.dal);
+  if(g.al)return 'fino al '+f(g.al);
+  return '';
+}
+function renderGite(){
+  const list=S.gite.slice().sort((a,b)=>(a.dal||'9999')<(b.dal||'9999')?-1:(a.dal||'9999')>(b.dal||'9999')?1:a.nome.localeCompare(b.nome,'it'));
+  $('#gp-vuoto').hidden=list.length>0;
+  $('#gp-h').hidden=!list.length;
+  $('#gp-list').hidden=!list.length;
+  $('#gp-list').replaceChildren(...list.map(g=>{
+    const n=S.mostre.filter(m=>m.gita===g.nome).length;
+    const sub=[periodoGita(g),gitaBusy===g.nome?'ricerca in corso…':(n+(n===1?' mostra':' mostre'))].filter(Boolean).join(' · ');
+    const del=h('button',{class:'del',type:'button',tabindex:'-1','aria-label':'Elimina la gita a '+g.nome});
+    del.innerHTML=TRASH;
+    const slide=h('div',{class:'slide'},
+      h('button',{class:'open',type:'button',onclick:()=>{
+        if(li.classList.contains('swiped')){setRow(li,slide,false);return}
+        if(Date.now()-lastSwipe<400)return;
+        vaiGita(g.nome);
+      }},h('span',{class:'t',text:g.nome}),h('span',{class:'gp-n',text:sub})));
+    const li=h('li',{class:'row'},del,slide);
+    del.addEventListener('click',()=>{
+      openRow=null;
+      li.style.height=li.offsetHeight+'px';
+      li.style.transition=reduce?'none':'height .25s ease,opacity .25s ease';
+      requestAnimationFrame(()=>{li.style.height='0';li.style.opacity='0'});
+      setTimeout(()=>{eliminaGita(g);renderGite();toast('Gita eliminata')},reduce?0:270);
+    });
+    attachSwipe(li,slide);
+    return li;
+  }));
+}
+function eliminaGita(g){
+  S.gite=S.gite.filter(x=>x!==g);
+  const ids=new Set(S.mostre.filter(m=>m.gita===g.nome).map(m=>m.id));
+  S.mostre=S.mostre.filter(m=>m.gita!==g.nome);
+  S.preferiti=S.preferiti.filter(id=>!ids.has(id));
+  if(ui.gita===g.nome){ui.gita=null;ui.filtro='tutte';renderDock();if(cur==='lista')renderLista()}
+  persist();
+}
+function vaiGita(nome){
+  chiudiGita();
+  ui.gita=nome;ui.filtro='tutte';
+  renderDock();vaiLista();
+}
 function promptGita(citta,dal,al,gia){
   const periodo=dal&&al?'dal '+dal+' al '+al:dal?'a partire dal '+dal:al?'fino al '+al:'nei prossimi giorni e settimane';
   return `Sei il motore di ricerca di ClickArt, un'app che raccoglie le mostre d'arte e di fotografia.
@@ -1492,42 +1573,49 @@ Usa la ricerca web: consulta i siti di musei, gallerie, fondazioni e portali di 
 ${gia.length?'Mostre già presenti, da non ripetere: '+gia.slice(0,60).join('; ')+'.':''}
 Rispondi alla fine solo con un array JSON (senza blocchi di codice e senza altro testo dopo) di al massimo 20 oggetti con questi campi: "titolo", "tipo" ("arte" oppure "fotografia"), "luogo" (nome della sede), "indirizzo" (via e numero civico), "citta", "dal" e "al" (date AAAA-MM-GG), "descrizione" (in italiano, al massimo 160 caratteri), "fonte" (nome del sito), "url" (indirizzo esatto della pagina che hai aperto o trovato con la ricerca e da cui hai preso i dati di quella mostra specifica, non la home del sito; le mostre senza un indirizzo di questo tipo verranno scartate, quindi non includerle).`;
 }
-async function cercaGita(citta,dal,al){
+async function cercaGita(g){
   const sample=await getSample();
-  if(!sample||!sample.web){toast('Per la gita serve la chiave API: inseriscila dal menu.');return}
-  const prima=norm(citta);
-  const esistente=gitePrecedenti().find(c=>norm(c)===prima);
-  const nome=esistente||citta;
-  const ctl=new AbortController();
-  const indietro=()=>S.regione&&mostreRegione().length?vaiLista():goHome();
-  busy('Cerco le mostre · '+nome,'Sto cercando sul web le mostre a '+nome+'. Può richiedere un minuto.',{actions:[btn('Annulla',()=>{ctl.abort();indietro()},'btn ghost')]});
+  if(!sample||!sample.web){$('#g-hint').textContent='Per cercare serve la chiave API: inseriscila dal menu, voce «Ricerca automatica».';return}
+  if(gitaBusy){$('#g-hint').textContent='Aspetta la fine della ricerca a '+gitaBusy+'.';return}
+  gitaBusy=g.nome;
+  $('#g-hint').textContent='Sto cercando a '+g.nome+'… Può richiedere un minuto.';
+  $('#g-ok').disabled=true;
+  renderGite();
+  let msg='';
   try{
-    const gia=S.mostre.filter(m=>m.gita===nome).map(m=>m.titolo);
+    const gia=S.mostre.filter(m=>m.gita===g.nome).map(m=>m.titolo);
     const urls=new Set();
-    const out=await sample.json(promptGita(nome,dal,al,gia),{signal:ctl.signal,maxUses:14,urls});
-    if(ctl.signal.aborted)return;
+    const out=await sample.json(promptGita(g.nome,g.dal,g.al,gia),{maxUses:14,urls});
     const arr=Array.isArray(out)?out:(out&&Array.isArray(out.mostre)?out.mostre:[]);
-    const trovate=arr.map(r=>normMostra({...r,gita:nome},S.regione)).filter(Boolean);
+    const trovate=arr.map(r=>normMostra({...r,gita:g.nome},S.regione||'Veneto')).filter(Boolean);
     const buone=trovate.filter(m=>linkVerificato(m.url,urls));
     const n=mergeMostre(buone);
     persist();
-    const ha=S.mostre.some(m=>m.gita===nome);
-    if(ha){ui.gita=nome;ui.filtro='tutte';renderDock();vaiLista()}else indietro();
-    toast(n?(n===1?'1 mostra trovata a ':n+' mostre trovate a ')+nome+(trovate.length>buone.length?' · '+(trovate.length-buone.length)+' scartate senza link verificato':''):'Nessuna mostra con un link verificato a '+nome+'.');
+    msg=n?(n===1?'1 mostra trovata a ':n+' mostre trovate a ')+g.nome+(trovate.length>buone.length?' · '+(trovate.length-buone.length)+' scartate senza link verificato':''):'Nessuna mostra nuova con un link verificato a '+g.nome+'.';
   }catch(e){
-    if(e&&e.code==='cancelled')return;
-    busy('Ricerca interrotta',erroreMsg(e),{bar:false,actions:[btn('Riprova',()=>cercaGita(citta,dal,al)),btn('Indietro',indietro,'btn ghost')]});
+    msg=erroreMsg(e);
+  }finally{
+    gitaBusy='';
+    $('#g-ok').disabled=false;
+    if(!gp.hidden)$('#g-hint').textContent='';
+    renderGite();
+    if(cur==='lista'&&ui.gita===g.nome)renderLista();
+    toast(msg);
   }
 }
-$('#gpop-form').addEventListener('submit',e=>{
+$('#gpage-form').addEventListener('submit',e=>{
   e.preventDefault();
   const c=str($('#g-citta').value,60);
   if(!c){$('#g-hint').textContent='Scrivi la città che vai a visitare.';$('#g-citta').focus();return}
   const dal=validDate($('#g-dal').value),al=validDate($('#g-al').value);
   if(al&&al<oggi()){$('#g-hint').textContent='La data di fine è già passata.';return}
   if(dal&&al&&dal>al){$('#g-hint').textContent='La data di inizio è dopo quella di fine.';return}
-  chiudiGita();
-  cercaGita(c,dal,al);
+  let g=S.gite.find(x=>norm(x.nome)===norm(c));
+  if(g){g.dal=dal;g.al=al}
+  else{g={nome:c,dal,al,creata:oggi()};S.gite.push(g)}
+  persist();
+  $('#gpage-form').reset();
+  cercaGita(g);
 });
 
 /* ---------- aggiungi una mostra da un link ---------- */
