@@ -1158,7 +1158,7 @@ function aggiorna(){
 const sheet=$('#sheet');
 let opener=null,closeT=0;
 function mapsUrl(m){
-  const q=[m.luogo,m.indirizzo,m.citta,m.regione,'Italia'].filter(Boolean).join(', ');
+  const q=(m.gita?[m.luogo,m.indirizzo,m.citta,m.citta?'':m.gita]:[m.luogo,m.indirizzo,m.citta,m.regione,'Italia']).filter(Boolean).join(', ');
   return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);
 }
 function periodo(m){
