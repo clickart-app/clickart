@@ -117,6 +117,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .back{width:44px;height:44px;margin:6px 0 0 -10px;background:none;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--fg)}
 .back svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 @media (hover:hover){.back:hover{color:var(--accent)}}
+.g-prec{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 10px}
+.g-prec .btn{font-size:14px}
 /* fonti */
 .src{list-style:none;margin:18px 0 0;padding:0;border-top:1px solid var(--rule)}
 .src li{display:flex;align-items:flex-start;gap:12px;border-bottom:1px solid var(--line);padding:12px 0}
@@ -274,6 +276,25 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
     </div>
   </form>
 </div>
+<div class="pop" id="gpop" hidden>
+  <div class="pop-bd" aria-hidden="true"></div>
+  <form class="pop-card" id="gpop-form" role="dialog" aria-modal="true" aria-labelledby="gpop-title" novalidate>
+    <h2 class="pop-title" id="gpop-title">Gita fuori porta</h2>
+    <p class="p-note">Cerca le mostre in una città fuori dalla tua regione: Roma, Milano, Londra…</p>
+    <label class="f"><span class="lab">Città</span><input id="g-citta" type="text" autocomplete="off" placeholder="Per esempio Roma"></label>
+    <div class="f2">
+      <label class="f"><span class="lab">Dal (facoltativo)</span><input id="g-dal" type="date"></label>
+      <label class="f"><span class="lab">Al (facoltativo)</span><input id="g-al" type="date"></label>
+    </div>
+    <div class="g-prec" id="g-prec" hidden></div>
+    <p class="p-note">La ricerca usa il web e ha un costo. Vengono tenute solo le mostre con un link verificato.</p>
+    <div class="actions">
+      <button class="btn" type="submit">Cerca</button>
+      <button class="btn ghost" type="button" id="g-cancel">Annulla</button>
+    </div>
+    <p class="hint" id="g-hint" role="status"></p>
+  </form>
+</div>
 <div class="pop" id="kpop" hidden>
   <div class="pop-bd" aria-hidden="true"></div>
   <form class="pop-card" id="kpop-form" role="dialog" aria-modal="true" aria-labelledby="kpop-title" novalidate>
@@ -415,7 +436,7 @@ const MAX_MOSTRE=300;
 function emptyState(){return{regione:'',fonti:{},mostre:[],preferiti:[],escluse:[],aggiornato:''}}
 let S=emptyState();
 let touched=false;
-const ui={filtro:'tutte'};
+const ui={filtro:'tutte',gita:null};
 let col=null,lastCfg='',lastMo='',timer=0,chain=Promise.resolve();
 
 function normFonte(f){
@@ -443,6 +464,7 @@ function normMostra(r,reg){
     regione:REGIONI.includes(r.regione)?r.regione:reg,
     aggiunta:validDate(r.aggiunta)||oggi()
   };
+  const gt=str(r.gita,60);if(gt)m.gita=gt;
   m.id=hash(norm(titolo)+'|'+norm(luogo||citta)+'|'+dal);
   return m;
 }
@@ -515,7 +537,7 @@ function mergeMostre(list,aggiorna){
   return n;
 }
 function isNew(m){return m.aggiunta>=addDays(oggi(),-7)}
-function mostreRegione(){return S.mostre.filter(m=>m.regione===S.regione)}
+function mostreRegione(){return ui.gita?S.mostre.filter(m=>m.gita===ui.gita):S.mostre.filter(m=>m.regione===S.regione&&!m.gita)}
 
 /* ---------- capacità della pagina ---------- */
 const hasClaude=typeof window.claude==='object'&&window.claude&&typeof window.claude.use==='function';
@@ -544,6 +566,22 @@ function estraiJson(t){
   const obj=prova('{','}');
   if(obj!==undefined)return obj;
   throw{code:'invalid_json',detail:t.trim().slice(0,160)};
+}
+/* indirizzi che la ricerca web ha davvero restituito: servono a verificare i link delle mostre */
+function normUrl(u){
+  return String(u||'').toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/[#?].*$/,'').replace(/\/+$/,'');
+}
+function raccogliUrl(content,set){
+  (content||[]).forEach(b=>{
+    if(b.type==='web_search_tool_result'&&Array.isArray(b.content))b.content.forEach(r=>{if(r&&r.url)set.add(normUrl(r.url))});
+    if(b.type==='text'&&Array.isArray(b.citations))b.citations.forEach(c=>{if(c&&c.url)set.add(normUrl(c.url))});
+  });
+}
+function linkVerificato(url,set){
+  const n=normUrl(url);
+  if(!n||n.indexOf('/')<0)return false;
+  for(const u of set){if(u===n||u.startsWith(n+'/')||n.startsWith(u+'/'))return true}
+  return false;
 }
 function apiSample(key){
   async function chiama(body,signal){
@@ -574,6 +612,7 @@ function apiSample(key){
     for(let i=0;i<4;i++){
       const d=await chiama({max_tokens:16000,tools:[{type:'web_search_20250305',name:'web_search',max_uses:opt.maxUses||8}],messages},opt.signal);
       testo=testoFinale(d.content);stop=d.stop_reason;
+      if(opt.urls)raccogliUrl(d.content,opt.urls);
       if(stop==='pause_turn'){messages=messages.concat([{role:'assistant',content:d.content}]);continue}
       break;
     }
@@ -664,6 +703,7 @@ function busy(titolo,msg,opts){
   for(const r of REGIONI)sel.append(h('option',{value:r,text:r}));
 })();
 function goHome(){
+  ui.gita=null;
   $('#hint-home').textContent='';
   if(S.regione)$('#regione').value=S.regione;
   $('#home-back').hidden=!(S.regione&&(mostreRegione().length||(S.fonti[S.regione]||[]).length));
@@ -692,12 +732,19 @@ function setMenu(open){
 const VOCI=(hasClaude?[['Aggiorna mostre',()=>aggiorna()]]:[]).concat([
   ['Backup',()=>backup()],
   ['Importa backup',()=>$('#file-in').click()],
-  ['Fonti',()=>{fontiNota='';renderFonti();show('fonti')}],
+  ['Fonti',()=>{ui.gita=null;fontiNota='';renderFonti();show('fonti')}],
   ['Cambia regione',()=>goHome()]
-]).concat(hasClaude?[]:[['Ricerca automatica',()=>apriKey()]]);
-$('#menu').replaceChildren(...VOCI.map(([t,fn],i)=>h('button',{type:'button',role:'menuitem',class:t==='Fonti'?'sep':null,text:t,onclick:()=>{setMenu(false);fn()}})));
+]).concat(hasClaude?[]:[['Gita fuori porta',()=>apriGita()],['Ricerca automatica',()=>apriKey()]]);
+function vociMenu(){
+  const v=VOCI.slice();
+  if(ui.gita)v.unshift(['Torna a '+S.regione,()=>{ui.gita=null;ui.filtro='tutte';renderDock();vaiLista()}]);
+  return v;
+}
+function disegnaMenu(){$('#menu').replaceChildren(...vociMenu().map(([t,fn],i)=>h('button',{type:'button',role:'menuitem',class:t==='Fonti'?'sep':null,text:t,onclick:()=>{setMenu(false);fn()}})))}
+disegnaMenu();
 $('#menu-btn').addEventListener('click',()=>{
   const open=$('#menu').hidden;
+  if(open)disegnaMenu();
   setMenu(open);
   if(open)$('#menu button').focus();
 });
@@ -819,7 +866,7 @@ ${fonti.length?fonti.map(f=>'- '+f.nome+' ('+f.url+')').join('\n'):'(nessuna: us
 Elenca le mostre d'arte e di fotografia in corso oggi o in programma nei prossimi mesi in ${reg}, tra quelle che queste fonti e queste sedi presentano.
 ${web?'Usa la ricerca web: consulta i siti delle fonti indicate e le pagine ufficiali delle sedi, e riporta solo mostre di cui hai letto titolo, sede e date. Se non trovi con certezza le date, non includere la mostra. Non inventare nulla.':'Non hai accesso al web e non puoi controllare i siti. Includi solo mostre di cui conosci con ragionevole certezza titolo, sede e date. Se non sei sicuro di una mostra o delle sue date, non includerla. Non inventare nulla: un elenco breve ma esatto è meglio di uno lungo.'} Escludi le mostre già concluse prima di oggi.${web&&gen?"\nFai anche una ricerca generale sul web, oltre alle fonti indicate: cerca mostre d'arte e di fotografia in "+reg+" presentate da musei, gallerie, fondazioni, comuni, festival e portali di eventi, e includi quelle di cui trovi titolo, sede e date. Nel campo \"fonte\" scrivi il sito dove le hai trovate.":''}
 ${gia.length?'Mostre già presenti, da non ripetere: '+gia.slice(0,80).join('; ')+'.':''}
-Rispondi alla fine solo con un array JSON (senza blocchi di codice e senza altro testo dopo) di al massimo 20 oggetti con questi campi: "titolo", "tipo" ("arte" oppure "fotografia"), "luogo" (nome della sede), "indirizzo" (via e numero civico), "citta", "dal" e "al" (date AAAA-MM-GG), "descrizione" (al massimo 160 caratteri), "fonte" (nome della fonte), "url" (${web?'indirizzo esatto della pagina web da cui hai preso i dati di quella mostra specifica, non la home del sito, altrimenti stringa vuota':'pagina della mostra o della sede, solo se la conosci con certezza, altrimenti stringa vuota'}).`;
+Rispondi alla fine solo con un array JSON (senza blocchi di codice e senza altro testo dopo) di al massimo 20 oggetti con questi campi: "titolo", "tipo" ("arte" oppure "fotografia"), "luogo" (nome della sede), "indirizzo" (via e numero civico), "citta", "dal" e "al" (date AAAA-MM-GG), "descrizione" (al massimo 160 caratteri), "fonte" (nome della fonte), "url" (${web?'indirizzo esatto della pagina web che hai aperto o trovato con la ricerca e da cui hai preso i dati di quella mostra specifica, non la home del sito. Le mostre senza un indirizzo di questo tipo verranno scartate, quindi non includerle':'pagina della mostra o della sede, solo se la conosci con certezza, altrimenti stringa vuota'}).`;
 }
 function erroreMsg(e){
   const c=e&&e.code;
@@ -834,6 +881,7 @@ function erroreMsg(e){
 async function cercaMostre(auto){
   if(auto!==true)auto=false;
   const reg=S.regione;
+  ui.gita=null;
   const fonti=(S.fonti[reg]||[]).filter(f=>f.attiva);
   if(!fonti.length&&!soloGen()){if(!auto)toast('Scegli almeno una fonte.');return}
   const indietro=()=>mostreRegione().length?vaiLista():(renderFonti(),show('fonti'));
@@ -852,13 +900,17 @@ async function cercaMostre(auto){
   });
   try{
     const gia=mostreRegione().map(m=>m.titolo);
-    const out=await sample.json(promptMostre(reg,fonti,gia,sample.web,getGen()),{signal:ctl.signal,maxUses:getGen()?14:8});
+    const urls=new Set();
+    const out=await sample.json(promptMostre(reg,fonti,gia,sample.web,getGen()),{signal:ctl.signal,maxUses:getGen()?14:8,urls});
     if(ctl.signal.aborted)return;
     const arr=Array.isArray(out)?out:(out&&Array.isArray(out.mostre)?out.mostre:[]);
-    const n=mergeMostre(arr.map(r=>normMostra(r,reg)).filter(Boolean));
+    const trovate=arr.map(r=>normMostra(r,reg)).filter(Boolean);
+    const buone=sample.web?trovate.filter(m=>linkVerificato(m.url,urls)):trovate;
+    const scartate=trovate.length-buone.length;
+    const n=mergeMostre(buone);
     S.aggiornato=oggi();persist();
     if(auto){segnaMese();if(cur==='lista')renderLista()}else vaiLista();
-    toast(n?(n===1?'1 mostra aggiunta':n+' mostre aggiunte'):(sample.web?'Nessuna mostra nuova trovata.':'Nessuna mostra nuova. Dentro l\'app Claude non vede il web: per un elenco verificato chiedigli di cercarle in chat.'));
+    toast(n?(n===1?'1 mostra aggiunta':n+' mostre aggiunte')+(scartate?' · '+scartate+' scartate senza link verificato':''):(sample.web?(scartate?'Nessuna mostra nuova con un link verificato.':'Nessuna mostra nuova trovata.'):'Nessuna mostra nuova. Dentro l\'app Claude non vede il web: per un elenco verificato chiedigli di cercarle in chat.'));
   }catch(e){
     if(e&&e.code==='cancelled')return;
     if(auto){toast('Aggiornamento mensile non riuscito. '+erroreMsg(e));return}
@@ -920,7 +972,7 @@ function renderLista(){
   purgeNow();
   const all=mostreRegione();
   repl(screens.lista,
-    h('h2',{class:'h2',text:S.regione}),
+    h('h2',{class:'h2',text:ui.gita||S.regione}),
     h('div',{class:'meta',id:'meta-l'},metaNodi()),
     h('div',{id:'items',class:'items'})
   );
@@ -1137,6 +1189,7 @@ document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   if(!$('#cpop').hidden){chiudiConf(false);return}
   if(!$('#kpop').hidden){chiudiKey();return}
+  if(!$('#gpop').hidden){chiudiGita();return}
   if(!$('#pop').hidden){chiudiPop();return}
   setMenu(false);closeSheet();
 });
@@ -1414,6 +1467,69 @@ $('#kpop-form').addEventListener('submit',e=>{
   setKey(k);chiudiKey();toast('Chiave salvata');
 });
 
+/* ---------- gita fuori porta ---------- */
+function gitePrecedenti(){
+  const m=new Map();
+  S.mostre.forEach(x=>{if(x.gita&&!m.has(norm(x.gita)))m.set(norm(x.gita),x.gita)});
+  return [...m.values()];
+}
+function apriGita(){
+  closeSheet();
+  $('#gpop-form').reset();$('#g-hint').textContent='';
+  const pr=gitePrecedenti(),box=$('#g-prec');
+  box.hidden=!pr.length;
+  box.replaceChildren(...pr.map(c=>h('button',{type:'button',class:'btn ghost sm',text:c,onclick:()=>{chiudiGita();ui.gita=c;ui.filtro='tutte';renderDock();vaiLista()}})));
+  $('#gpop').hidden=false;document.body.classList.add('lock');
+  $('#g-citta').focus({preventScroll:true});
+}
+function chiudiGita(){$('#gpop').hidden=true;document.body.classList.remove('lock')}
+$('#g-cancel').addEventListener('click',chiudiGita);
+function promptGita(citta,dal,al,gia){
+  const periodo=dal&&al?'dal '+dal+' al '+al:dal?'a partire dal '+dal:al?'fino al '+al:'nei prossimi giorni e settimane';
+  return `Sei il motore di ricerca di ClickArt, un'app che raccoglie le mostre d'arte e di fotografia.
+Data di oggi: ${oggi()}. L'utente andrà a visitare: ${citta}. Periodo della visita: ${periodo}.
+Usa la ricerca web: consulta i siti di musei, gallerie, fondazioni e portali di eventi di ${citta} e riporta le mostre d'arte e di fotografia aperte ${dal||al?'in quel periodo':'oggi o in programma a breve'}, di cui hai letto titolo, sede e date. Se non trovi con certezza le date, non includere la mostra. Non inventare nulla. Escludi le mostre già concluse prima di oggi.
+${gia.length?'Mostre già presenti, da non ripetere: '+gia.slice(0,60).join('; ')+'.':''}
+Rispondi alla fine solo con un array JSON (senza blocchi di codice e senza altro testo dopo) di al massimo 20 oggetti con questi campi: "titolo", "tipo" ("arte" oppure "fotografia"), "luogo" (nome della sede), "indirizzo" (via e numero civico), "citta", "dal" e "al" (date AAAA-MM-GG), "descrizione" (in italiano, al massimo 160 caratteri), "fonte" (nome del sito), "url" (indirizzo esatto della pagina che hai aperto o trovato con la ricerca e da cui hai preso i dati di quella mostra specifica, non la home del sito; le mostre senza un indirizzo di questo tipo verranno scartate, quindi non includerle).`;
+}
+async function cercaGita(citta,dal,al){
+  const sample=await getSample();
+  if(!sample||!sample.web){toast('Per la gita serve la chiave API: inseriscila dal menu.');return}
+  const prima=norm(citta);
+  const esistente=gitePrecedenti().find(c=>norm(c)===prima);
+  const nome=esistente||citta;
+  const ctl=new AbortController();
+  const indietro=()=>S.regione&&mostreRegione().length?vaiLista():goHome();
+  busy('Cerco le mostre · '+nome,'Sto cercando sul web le mostre a '+nome+'. Può richiedere un minuto.',{actions:[btn('Annulla',()=>{ctl.abort();indietro()},'btn ghost')]});
+  try{
+    const gia=S.mostre.filter(m=>m.gita===nome).map(m=>m.titolo);
+    const urls=new Set();
+    const out=await sample.json(promptGita(nome,dal,al,gia),{signal:ctl.signal,maxUses:14,urls});
+    if(ctl.signal.aborted)return;
+    const arr=Array.isArray(out)?out:(out&&Array.isArray(out.mostre)?out.mostre:[]);
+    const trovate=arr.map(r=>normMostra({...r,gita:nome},S.regione)).filter(Boolean);
+    const buone=trovate.filter(m=>linkVerificato(m.url,urls));
+    const n=mergeMostre(buone);
+    persist();
+    const ha=S.mostre.some(m=>m.gita===nome);
+    if(ha){ui.gita=nome;ui.filtro='tutte';renderDock();vaiLista()}else indietro();
+    toast(n?(n===1?'1 mostra trovata a ':n+' mostre trovate a ')+nome+(trovate.length>buone.length?' · '+(trovate.length-buone.length)+' scartate senza link verificato':''):'Nessuna mostra con un link verificato a '+nome+'.');
+  }catch(e){
+    if(e&&e.code==='cancelled')return;
+    busy('Ricerca interrotta',erroreMsg(e),{bar:false,actions:[btn('Riprova',()=>cercaGita(citta,dal,al)),btn('Indietro',indietro,'btn ghost')]});
+  }
+}
+$('#gpop-form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const c=str($('#g-citta').value,60);
+  if(!c){$('#g-hint').textContent='Scrivi la città che vai a visitare.';$('#g-citta').focus();return}
+  const dal=validDate($('#g-dal').value),al=validDate($('#g-al').value);
+  if(al&&al<oggi()){$('#g-hint').textContent='La data di fine è già passata.';return}
+  if(dal&&al&&dal>al){$('#g-hint').textContent='La data di inizio è dopo quella di fine.';return}
+  chiudiGita();
+  cercaGita(c,dal,al);
+});
+
 /* ---------- aggiungi una mostra da un link ---------- */
 const pop=$('#pop'),pf=$('#pop-form');
 function pHint(t){$('#p-hint').textContent=t||''}
@@ -1571,7 +1687,7 @@ pf.addEventListener('submit',async e=>{
   const m=normMostra({
     titolo,tipo:$('#p-tipo').value,luogo:$('#p-luogo').value,indirizzo:$('#p-indirizzo').value,citta:$('#p-citta').value,
     dal:$('#p-dal').value,al,descrizione:$('#p-desc').value,
-    fonte:url?host(url):'Aggiunta da te',url,regione:modifica?editM.regione:S.regione,aggiunta:modifica?editM.aggiunta:oggi()
+    fonte:url?host(url):'Aggiunta da te',url,regione:modifica?editM.regione:S.regione,aggiunta:modifica?editM.aggiunta:oggi(),gita:modifica?(editM.gita||''):(ui.gita||'')
   },S.regione);
   if(!m){rivela('Non riesco ad aggiungere questa mostra. Controlla i dati.');return}
   if(modifica){
