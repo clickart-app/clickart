@@ -16,7 +16,7 @@
 <style>[hidden]{display:none!important}html,body{margin:0;padding:0}body{background:var(--bg);color:var(--fg)}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..700&family=EB+Garamond:ital,wght@0,400..600;1,400..600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..700&family=EB+Garamond:ital,wght@0,400..600;1,400..600&family=Inter:wght@500..700&display=swap">
 <style>
 /* Layout: colonna unica da 720px su fondo bianco con filetti sottili; il rosso scuro compare solo su stato attivo, preferiti, novità e sul punto del marchio. */
 :root{
@@ -29,6 +29,7 @@
   --on-accent:#ffffff;
   --sheet:#f4f4f2;
   --veil:rgba(0,0,0,.42);
+  --titolo:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   --display:'Bodoni Moda','Didot','Bodoni 72',Georgia,'Times New Roman',serif;
   --serif:'EB Garamond','Cormorant Garamond',Georgia,'Times New Roman',serif;
 }
@@ -167,7 +168,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .del svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .row .open{flex:1;min-width:0;background:none;border:0;padding:16px 8px 16px 0;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:6px}
 @media (hover:hover){.row .open:hover .t{color:var(--accent)}}
-.t{font-family:var(--display);font-weight:600;font-size:clamp(20px,4.6vw,24px);line-height:1.2;letter-spacing:-.005em;overflow-wrap:anywhere;text-wrap:balance}
+.t{font-family:var(--titolo);font-weight:600;font-size:clamp(18px,4.4vw,22px);line-height:1.25;letter-spacing:-.01em;overflow-wrap:anywhere;text-wrap:balance}
 .tipo{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
 .tipo.foto{font-style:italic}
 .nuova{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-left:12px}
@@ -186,7 +187,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .sheet.open .panel{transform:none}
 .panel-in{max-width:720px;margin:0 auto;padding-block:14px calc(112px + env(safe-area-inset-bottom,0px));padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
 .grab{width:44px;height:2px;background:var(--rule);margin:0 auto 14px;opacity:.5}
-.s-title{font-family:var(--display);font-weight:700;font-size:clamp(28px,7vw,38px);line-height:1.1;letter-spacing:-.01em;margin:10px 0 8px;text-wrap:balance}
+.s-title{font-family:var(--titolo);font-weight:650;font-size:clamp(25px,6.4vw,34px);line-height:1.15;letter-spacing:-.02em;margin:10px 0 8px;text-wrap:balance}
 .s-per{font-style:italic;font-size:20px;margin:0 0 20px}
 .s-dl{margin:0 0 20px;border-top:1px solid var(--line)}
 .s-dl div{display:grid;grid-template-columns:84px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
