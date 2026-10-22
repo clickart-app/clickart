@@ -16,7 +16,7 @@
 <style>[hidden]{display:none!important}html,body{margin:0;padding:0}body{background:var(--bg);color:var(--fg)}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..700&family=EB+Garamond:ital,wght@0,400..600;1,400..600&family=Inter:wght@500..700&family=Jost:wght@400..600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..700&family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Inter:wght@500..700&family=Jost:wght@400..600&display=swap">
 <style>
 /* Layout: colonna unica da 720px su fondo bianco con filetti sottili; il rosso scuro compare solo su stato attivo, preferiti, novità e sul punto del marchio. */
 :root{
@@ -85,7 +85,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .tag{font-style:italic;color:var(--muted);margin:14px 0 0}
 .h2{font-family:var(--regione);font-weight:700;color:var(--accent);font-size:clamp(30px,7vw,40px);line-height:1.1;letter-spacing:-.005em;margin:0 0 10px;text-wrap:balance}
 .lead{color:var(--muted);margin:0 0 20px;max-width:60ch}
-.meta .fsel{color:var(--accent)}
+.meta .fsel{color:var(--accent);font-weight:700}
+#meta-l{font-size:16px}
 .meta{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-variant-ligatures:none;font-feature-settings:"liga" 0,"clig" 0,"calt" 0,"dlig" 0,"swsh" 0,"cswh" 0,"hist" 0;font-variant-caps:normal}
 .hint{color:var(--accent);min-height:1.5em}
 
@@ -1010,7 +1011,7 @@ const FILTRI=[['tutte','Tutte'],['arte','Arte'],['fotografia','Fotografia'],['no
 const SV=d=>'<svg viewBox="0 0 24 24" aria-hidden="true">'+d+'</svg>';
 const ICONE={
   tutte:SV('<rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/>'),
-  arte:SV('<path d="M12 3.5C7.3 3.5 3.5 7 3.5 11.5c0 4.2 3.4 7.5 7.6 7.5 1.3 0 2-.8 2-1.8 0-1.4-1-1.7-1-2.8 0-1 .8-1.6 1.8-1.6H17c2 0 3.5-1.3 3.5-3.4 0-4.2-3.8-7.9-8.5-7.9z"/><circle cx="7.5" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="10" cy="7.5" r="1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="7.5" r="1" fill="currentColor" stroke="none"/>'),
+  arte:SV('<path d="M20.4 3.6a2.1 2.1 0 0 0-3 0L9.6 11.4l3 3 7.8-7.8a2.1 2.1 0 0 0 0-3z"/><path d="M9.2 12.8c-2.3 0-3.9 1.5-3.9 3.5 0 1.5-.8 2.6-2 3.2 1.2 1 2.7 1.5 4.200 1.500 2.600 0 4.700-2 4.700-4.400"/>'),
   fotografia:SV('<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1.2-2h5.6L16 7h2.5A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.500h-13A1.5 1.500 0 0 1 4 17.500z"/><circle cx="12" cy="13" r="3.5"/>'),
   novita:SV('<path d="M12 3.500l1.900 5.600 5.600 1.900-5.600 1.900L12 18.500l-1.900-5.600-5.600-1.900 5.600-1.900z"/><path d="M18.500 17.500v3M17 19h3"/>'),
   preferite:SV('<path d="M12 20.5C12 20.5 3 15.2 3 9a4.5 4.5 0 0 1 9-1.5A4.5 4.5 0 0 1 21 9c0 6.2-9 11.5-9 11.5z"/>')
