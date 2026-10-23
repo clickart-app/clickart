@@ -140,6 +140,10 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .gp-h{margin-top:30px}
 .l-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .l-head .h2{min-width:0}
+.l-btns{display:flex;flex:none;margin-right:-10px}
+.l-btns .l-refresh{margin-right:0}
+.l-edit{color:var(--fg)!important}
+.l-per{font-size:18px;margin:2px 0 8px;color:var(--fg)}
 .l-refresh{flex:none;width:44px;height:44px;margin:-2px -10px 0 0;background:none;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--accent)}
 .l-refresh svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .l-refresh:disabled{cursor:default}
@@ -335,6 +339,22 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
     <ul class="list" id="gp-list"></ul>
     <p class="empty" id="gp-vuoto">Nessuna gita in programma.</p>
   </div>
+</div>
+<div class="pop" id="epop" hidden>
+  <div class="pop-bd" aria-hidden="true"></div>
+  <form class="pop-card" id="epop-form" role="dialog" aria-modal="true" aria-labelledby="epop-title" novalidate>
+    <h2 class="pop-title" id="epop-title">Modifica la gita</h2>
+    <div class="f2">
+      <label class="f"><span class="lab">Dal</span><input id="e-dal" type="date"></label>
+      <label class="f"><span class="lab">Al</span><input id="e-al" type="date"></label>
+    </div>
+    <p class="p-note">Cambiare le date non cerca di nuovo le mostre: per farlo tocca la freccia circolare nella pagina della città.</p>
+    <div class="actions">
+      <button class="btn" type="submit">Salva</button>
+      <button class="btn ghost" type="button" id="e-cancel">Annulla</button>
+    </div>
+    <p class="hint" id="e-hint" role="status"></p>
+  </form>
 </div>
 <div class="pop" id="kpop" hidden>
   <div class="pop-bd" aria-hidden="true"></div>
@@ -1067,6 +1087,35 @@ function passa(m){
   }
 }
 function vaiLista(){renderLista();show('lista')}
+function btnModifica(){
+  const nome=ui.gita;
+  const b=h('button',{type:'button',class:'l-refresh l-edit',id:'l-edit','aria-label':'Modifica la gita a '+nome,title:'Modifica la gita',onclick:()=>apriModGita(nome)});
+  b.innerHTML=SV('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>');
+  return b;
+}
+let modGita=null;
+function apriModGita(nome){
+  const g=S.gite.find(x=>x.nome===nome);
+  if(!g)return;
+  modGita=g;
+  $('#epop-title').textContent='Modifica la gita a '+g.nome;
+  $('#e-dal').value=g.dal||'';$('#e-al').value=g.al||'';$('#e-hint').textContent='';
+  navPush('epop',chiudiModGita);
+  $('#epop').hidden=false;document.body.classList.add('lock');
+}
+function chiudiModGita(){navDrop('epop');$('#epop').hidden=true;document.body.classList.remove('lock');modGita=null}
+$('#e-cancel').addEventListener('click',chiudiModGita);
+$('#epop-form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const dal=validDate($('#e-dal').value),al=validDate($('#e-al').value);
+  if(al&&al<oggi()){$('#e-hint').textContent='La data di fine è già passata.';return}
+  if(dal&&al&&dal>al){$('#e-hint').textContent='La data di inizio è dopo quella di fine.';return}
+  if(modGita){modGita.dal=dal;modGita.al=al;persist()}
+  chiudiModGita();
+  renderGite();
+  if(cur==='lista'&&ui.gita)renderLista();
+  toast('Gita modificata');
+});
 function btnRefresh(){
   const nome=ui.gita;
   const b=h('button',{type:'button',class:'l-refresh'+(gitaBusy===nome?' spin':''),id:'l-refresh','aria-label':'Aggiorna le mostre a '+nome,title:'Aggiorna le mostre a '+nome,disabled:gitaBusy?true:null,onclick:async()=>{
@@ -1082,7 +1131,8 @@ function renderLista(){
   $('#gita-btn').setAttribute('aria-pressed',String(!!ui.gita));
   const all=mostreRegione();
   repl(screens.lista,
-    ui.gita?h('div',{class:'l-head'},h('h2',{class:'h2',text:ui.gita}),btnRefresh()):h('h2',{class:'h2',text:S.regione}),
+    ui.gita?h('div',{class:'l-head'},h('h2',{class:'h2',text:ui.gita}),h('div',{class:'l-btns'},btnModifica(),btnRefresh())):h('h2',{class:'h2',text:S.regione}),
+    ui.gita?h('p',{class:'l-per',text:periodoGita(S.gite.find(x=>x.nome===ui.gita)||{})}):null,
     h('div',{class:'meta',id:'meta-l'},metaNodi()),
     h('div',{id:'items',class:'items'})
   );
@@ -1304,6 +1354,7 @@ document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   if(!$('#cpop').hidden){chiudiConf(false);return}
   if(!$('#kpop').hidden){chiudiKey();return}
+  if(!$('#epop').hidden){chiudiModGita();return}
   if(!$('#gpage').hidden){chiudiGita();return}
   if(!$('#pop').hidden){chiudiPop();return}
   setMenu(false);closeSheet();
