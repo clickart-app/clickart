@@ -147,6 +147,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 @keyframes gira{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.l-refresh.spin svg{animation:none;opacity:.5}}
 .gp-n{font-size:15px;color:var(--muted)}
+.gp-d{font-size:17px;color:var(--fg);margin-top:-2px}
 @media (prefers-reduced-motion:reduce){.gpage{transition:none}}
 /* fonti */
 .src{list-style:none;margin:18px 0 0;padding:0;border-top:1px solid var(--rule)}
@@ -1615,10 +1616,16 @@ function formGita(aperto){
 $('#gp-new').addEventListener('click',()=>formGita(!$('#gp-form-wrap').classList.contains('open')));
 function periodoGita(g){
   const f=d=>fmtLong.format(parse(d));
-  if(g.dal&&g.al)return 'dal '+f(g.dal)+' al '+f(g.al);
+  if(g.dal&&g.al){
+    const a=parse(g.dal),b=parse(g.al);
+    if(g.dal===g.al)return f(g.al);
+    if(a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth())return a.getDate()+'–'+f(g.al);
+    if(a.getFullYear()===b.getFullYear())return new Intl.DateTimeFormat('it-IT',{day:'numeric',month:'long'}).format(a)+' – '+f(g.al);
+    return f(g.dal)+' – '+f(g.al);
+  }
   if(g.dal)return 'dal '+f(g.dal);
   if(g.al)return 'fino al '+f(g.al);
-  return '';
+  return 'Date non indicate';
 }
 function renderGite(){
   const list=S.gite.slice().sort((a,b)=>(a.dal||'9999')<(b.dal||'9999')?-1:(a.dal||'9999')>(b.dal||'9999')?1:a.nome.localeCompare(b.nome,'it'));
@@ -1629,7 +1636,7 @@ function renderGite(){
   if(!list.length)formGita(true);
   $('#gp-list').replaceChildren(...list.map(g=>{
     const n=S.mostre.filter(m=>m.gita===g.nome).length;
-    const sub=[periodoGita(g),gitaBusy===g.nome?'ricerca in corso…':(n+(n===1?' mostra':' mostre'))].filter(Boolean).join(' · ');
+    const sub=gitaBusy===g.nome?'ricerca in corso…':(n+(n===1?' mostra':' mostre'));
     const del=h('button',{class:'del',type:'button',tabindex:'-1','aria-label':'Elimina la gita a '+g.nome});
     del.innerHTML=TRASH;
     const slide=h('div',{class:'slide'},
@@ -1637,7 +1644,7 @@ function renderGite(){
         if(li.classList.contains('swiped')){setRow(li,slide,false);return}
         if(Date.now()-lastSwipe<400)return;
         vaiGita(g.nome);
-      }},h('span',{class:'t',text:g.nome}),h('span',{class:'gp-n',text:sub})));
+      }},h('span',{class:'t',text:g.nome}),h('span',{class:'gp-d',text:periodoGita(g)}),h('span',{class:'gp-n',text:sub})));
     const li=h('li',{class:'row'},del,slide);
     del.addEventListener('click',()=>{
       openRow=null;
