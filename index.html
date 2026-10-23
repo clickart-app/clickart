@@ -138,6 +138,14 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .gp-form.open .gp-form-in{visibility:visible;transition:none}
 @media (prefers-reduced-motion:reduce){.gp-form{transition:none}}
 .gp-h{margin-top:30px}
+.l-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.l-head .h2{min-width:0}
+.l-refresh{flex:none;width:44px;height:44px;margin:-2px -10px 0 0;background:none;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--accent)}
+.l-refresh svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.l-refresh:disabled{cursor:default}
+.l-refresh.spin svg{animation:gira 1s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.l-refresh.spin svg{animation:none;opacity:.5}}
 .gp-n{font-size:15px;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){.gpage{transition:none}}
 /* fonti */
@@ -1058,12 +1066,22 @@ function passa(m){
   }
 }
 function vaiLista(){renderLista();show('lista')}
+function btnRefresh(){
+  const nome=ui.gita;
+  const b=h('button',{type:'button',class:'l-refresh'+(gitaBusy===nome?' spin':''),id:'l-refresh','aria-label':'Aggiorna le mostre a '+nome,title:'Aggiorna le mostre a '+nome,disabled:gitaBusy?true:null,onclick:async()=>{
+    const g=S.gite.find(x=>x.nome===nome);
+    if(!g||gitaBusy)return;
+    if(await conferma('Aggiornare la gita?','Cerco di nuovo le mostre a '+nome+'. Può richiedere un minuto e ha un piccolo costo a carico della tua chiave API.','Aggiorna'))cercaGita(g);
+  }});
+  b.innerHTML=SV('<path d="M20 12a8 8 0 1 1-2.7-6"/><path d="M20.5 4v5h-5"/>');
+  return b;
+}
 function renderLista(){
   purgeNow();
   $('#gita-btn').setAttribute('aria-pressed',String(!!ui.gita));
   const all=mostreRegione();
   repl(screens.lista,
-    h('h2',{class:'h2',text:ui.gita||S.regione}),
+    ui.gita?h('div',{class:'l-head'},h('h2',{class:'h2',text:ui.gita}),btnRefresh()):h('h2',{class:'h2',text:S.regione}),
     h('div',{class:'meta',id:'meta-l'},metaNodi()),
     h('div',{id:'items',class:'items'})
   );
@@ -1643,7 +1661,7 @@ function eliminaGita(g){
 function vaiGita(nome){
   chiudiGita();
   ui.gita=nome;ui.filtro='tutte';
-  navPush('gita',()=>{ui.gita=null;ui.filtro='tutte';renderDock();if(cur==='lista')renderLista()});
+  navPush('gita',()=>{ui.gita=null;ui.filtro='tutte';renderDock();if(cur==='lista')renderLista();apriGita()});
   renderDock();vaiLista();
 }
 function promptGita(citta,dal,al,gia){
@@ -1659,6 +1677,7 @@ async function cercaGita(g){
   if(!sample||!sample.web){$('#g-hint').textContent='Per cercare serve la chiave API: inseriscila dal menu, voce «Ricerca automatica».';return}
   if(gitaBusy){$('#g-hint').textContent='Aspetta la fine della ricerca a '+gitaBusy+'.';return}
   gitaBusy=g.nome;
+  if(cur==='lista'&&ui.gita===g.nome)renderLista();
   $('#g-hint').textContent='Sto cercando a '+g.nome+'… Può richiedere un minuto.';
   $('#g-ok').disabled=true;
   renderGite();
