@@ -1249,7 +1249,7 @@ const sheet=$('#sheet');
 let opener=null,closeT=0;
 function mapsUrl(m){
   const q=(m.gita?[m.luogo,m.indirizzo,m.citta,m.citta?'':m.gita]:[m.luogo,m.indirizzo,m.citta,m.regione,'Italia']).filter(Boolean).join(', ');
-  return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);
+  return 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+encodeURIComponent(q);
 }
 function periodo(m){
   const al=fmtLong.format(parse(m.al));
@@ -1274,7 +1274,7 @@ function openSheet(m,from){
   const share=h('button',{class:'s-ic',type:'button','aria-label':'Condividi',title:'Condividi',onclick:()=>condividi(m)});
   share.innerHTML=SV('<path d="M12 15V3M8 7l4-4 4 4"/><path d="M8 11H6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2"/>');
   const haMaps=!!(m.luogo||m.indirizzo||m.citta);
-  const maps=haMaps?h('a',{class:'s-ic',href:mapsUrl(m),target:'_blank',rel:'noopener noreferrer','aria-label':'Apri in Maps',title:'Apri in Maps'}):null;
+  const maps=haMaps?h('a',{class:'s-ic',href:mapsUrl(m),target:'_blank',rel:'noopener noreferrer','aria-label':'Indicazioni in Maps',title:'Indicazioni in Maps'}):null;
   if(maps)maps.innerHTML=SV('<path d="M12 21s-7-6.1-7-11.4a7 7 0 0 1 14 0C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.6" r="2.5"/>');
   const modif=h('button',{class:'s-ic',type:'button','aria-label':'Modifica',title:'Modifica',onclick:()=>apriModifica(m)});
   modif.innerHTML=SV('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>');
@@ -1286,7 +1286,7 @@ function openSheet(m,from){
   const rows=[];
   if(luogo.length){
     const righe=luogo.map(x=>h('span',{class:'ln',text:x}));
-    rows.push(h('div',{},h('dt',{text:'Dove'}),h('dd',{},haMaps?h('a',{href:mapsUrl(m),target:'_blank',rel:'noopener noreferrer',title:'Apri in Maps','aria-label':'Apri in Maps: '+luogo.join(', ')},righe):righe)));
+    rows.push(h('div',{},h('dt',{text:'Dove'}),h('dd',{},haMaps?h('a',{href:mapsUrl(m),target:'_blank',rel:'noopener noreferrer',title:'Indicazioni in Maps','aria-label':'Indicazioni in Maps: '+luogo.join(', ')},righe):righe)));
   }
   rows.push(h('div',{},h('dt',{text:'Tipo'}),h('dd',{text:m.tipo==='fotografia'?'Fotografia':'Arte'})));
   if(m.fonte||m.url){
