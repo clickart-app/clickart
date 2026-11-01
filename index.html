@@ -139,6 +139,17 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .gp-form.open .gp-form-in{visibility:visible;transition:none}
 @media (prefers-reduced-motion:reduce){.gp-form{transition:none}}
 .gp-h{margin-top:30px}
+.stars{display:flex;gap:4px;margin-top:2px}
+.star{width:44px;height:44px;background:none;border:0;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)}
+.star svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linejoin:round}
+.star[aria-pressed="true"]{color:var(--accent)}
+.star[aria-pressed="true"] svg{fill:currentColor}
+.st-mini{display:inline-flex;gap:2px;color:var(--accent);vertical-align:middle}
+.st-mini svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linejoin:round}
+.st-mini svg.on{fill:currentColor}
+.gp-nota{font-size:16px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
+.s-ic.vs[aria-pressed="true"] svg{fill:none}
+#v-nota{width:100%;box-sizing:border-box;font:inherit;font-size:18px;padding:10px 0;border:0;border-bottom:1px solid var(--rule);background:transparent;color:var(--fg);resize:vertical}
 .l-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .l-head .h2{min-width:0}
 .l-btns{display:flex;flex:none;margin-right:-10px}
@@ -341,6 +352,34 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
     <p class="empty" id="gp-vuoto">Nessuna gita in programma.</p>
   </div>
 </div>
+<div class="gpage" id="spage" hidden role="dialog" aria-modal="true" aria-labelledby="sp-t">
+  <div class="gp-in">
+    <div class="gp-bar">
+      <button type="button" class="back" id="sp-back" aria-label="Indietro" title="Indietro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
+      <button type="button" class="gp-new" id="sp-new" aria-label="Aggiungi una mostra visitata" title="Aggiungi una mostra visitata"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Aggiungi una nota</span></button>
+    </div>
+    <h2 class="h2" id="sp-t" tabindex="-1">Storico</h2>
+    <p class="p-note" id="sp-n"></p>
+    <ul class="list" id="sp-list"></ul>
+    <p class="empty" id="sp-vuoto">Nessuna mostra nello storico. Tocca «Aggiungi una nota» per scrivere la prima, oppure apri una mostra e tocca la spunta nella scheda.</p>
+  </div>
+</div>
+<div class="pop" id="vpop" hidden>
+  <div class="pop-bd" aria-hidden="true"></div>
+  <form class="pop-card" id="vpop-form" role="dialog" aria-modal="true" aria-labelledby="vpop-title" novalidate>
+    <h2 class="pop-title" id="vpop-title">Mostra visitata</h2>
+    <label class="f"><span class="lab">Mostra</span><input id="v-nome" type="text" autocomplete="off" maxlength="140" placeholder="Nome della mostra"></label>
+    <label class="f"><span class="lab">Data della visita</span><input id="v-data" type="date"></label>
+    <div class="f"><span class="lab">Valutazione</span><div class="stars" id="v-stelle" role="group" aria-label="Valutazione da 1 a 5 stelle"></div></div>
+    <label class="f"><span class="lab">Nota</span><textarea id="v-nota" rows="4" maxlength="600" placeholder="Cosa ti è piaciuto, con chi sei andato…"></textarea></label>
+    <p class="hint" id="v-hint" role="status"></p>
+    <div class="actions">
+      <button class="btn" type="submit">Salva</button>
+      <button class="btn ghost" type="button" id="v-del">Rimuovi</button>
+      <button class="btn ghost" type="button" id="v-cancel">Annulla</button>
+    </div>
+  </form>
+</div>
 <div class="pop" id="epop" hidden>
   <div class="pop-bd" aria-hidden="true"></div>
   <form class="pop-card" id="epop-form" role="dialog" aria-modal="true" aria-labelledby="epop-title" novalidate>
@@ -495,7 +534,7 @@ const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').m
 /* ---------- stato e salvataggio ---------- */
 const LS='clickart.v1';
 const MAX_MOSTRE=300;
-function emptyState(){return{regione:'',fonti:{},mostre:[],preferiti:[],escluse:[],aggiornato:'',gite:[]}}
+function emptyState(){return{regione:'',fonti:{},mostre:[],preferiti:[],escluse:[],aggiornato:'',gite:[],storico:[]}}
 let S=emptyState();
 let touched=false;
 const ui={filtro:'tutte',gita:null};
@@ -544,8 +583,16 @@ function normState(o){
   if(Array.isArray(o.escluse))s.escluse=o.escluse.filter(x=>typeof x==='string').slice(-500);
   s.aggiornato=validDate(o.aggiornato);
   if(Array.isArray(o.gite))s.gite=o.gite.map(normGita).filter(Boolean).slice(0,30);
+  if(Array.isArray(o.storico))s.storico=o.storico.map(normVisita).filter(Boolean).slice(0,500);
   sincGite(s);
   return s;
+}
+function normVisita(o){
+  if(!o||typeof o!=='object')return null;
+  const titolo=str(o.titolo,140),id=str(o.id,60);
+  if(!titolo||!id)return null;
+  return{id,titolo,data:validDate(o.data)||oggi(),stelle:Math.max(0,Math.min(5,parseInt(o.stelle,10)||0)),
+    nota:typeof o.nota==='string'?o.nota.trim().slice(0,600):''};
 }
 function normGita(g){
   if(!g||typeof g!=='object')return null;
@@ -560,7 +607,7 @@ function sincGite(st){
     if(m.gita&&!st.gite.some(g=>norm(g.nome)===norm(m.gita)))st.gite.push({nome:m.gita,dal:'',al:'',creata:m.aggiunta||oggi()});
   });
 }
-function cfg(){return{regione:S.regione,fonti:S.fonti,preferiti:S.preferiti,escluse:S.escluse,aggiornato:S.aggiornato,gite:S.gite}}
+function cfg(){return{regione:S.regione,fonti:S.fonti,preferiti:S.preferiti,escluse:S.escluse,aggiornato:S.aggiornato,gite:S.gite,storico:S.storico}}
 function loadLocal(){try{const t=localStorage.getItem(LS);return t?normState(JSON.parse(t)):emptyState()}catch(e){return emptyState()}}
 function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({...cfg(),mostre:S.mostre}))}catch(e){}}
 function persist(){touched=true;clearTimeout(timer);timer=setTimeout(flush,350)}
@@ -874,6 +921,7 @@ function setMenu(open){
   $('#menu-btn').setAttribute('aria-expanded',String(open));
 }
 const VOCI=(hasClaude?[['Aggiorna mostre',()=>aggiorna()]]:[]).concat([
+  ['Storico',()=>apriStorico()],
   ['Backup',()=>backup()],
   ['Importa backup',()=>$('#file-in').click()],
   ['Fonti',()=>{esciGita();fontiNota='';renderFonti();show('fonti')}],
@@ -884,7 +932,7 @@ function vociMenu(){
   if(ui.gita)v.unshift(['Torna a '+S.regione,()=>{esciGita();ui.filtro='tutte';renderDock();vaiLista();disegnaMenu()}]);
   return v;
 }
-const VERSIONE=43;
+const VERSIONE=45;
 function disegnaMenu(){
   $('#gita-btn').setAttribute('aria-pressed',String(!!ui.gita));$('#menu').replaceChildren(...vociMenu().map(([t,fn],i)=>h('button',{type:'button',role:'menuitem',class:t==='Fonti'?'sep':null,text:t,onclick:()=>{setMenu(false);fn()}})).concat([h('p',{class:'ver',text:'ClickArt · versione '+VERSIONE})]))}
 disegnaMenu();
@@ -1295,7 +1343,9 @@ async function condividi(m){
   try{await navigator.clipboard.writeText(testo+(link?'\n'+link:''));toast('Copiato negli appunti')}
   catch(e){toast('Non riesco a condividere questa mostra')}
 }
+let sheetM=null;
 function openSheet(m,from){
+  sheetM=m;
   opener=from||null;
   clearTimeout(closeT);
   const luogo=[m.luogo,[m.indirizzo,m.citta].filter(Boolean).join(', ')].filter(Boolean);
@@ -1306,6 +1356,16 @@ function openSheet(m,from){
   if(maps)maps.innerHTML=SV('<path d="M12 21s-7-6.1-7-11.4a7 7 0 0 1 14 0C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.6" r="2.5"/>');
   const modif=h('button',{class:'s-ic',type:'button','aria-label':'Modifica',title:'Modifica',onclick:()=>apriModifica(m)});
   modif.innerHTML=SV('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>');
+  const gia=S.storico.find(x=>x.id===m.id);
+  const vis=h('button',{class:'s-ic vs',type:'button','aria-pressed':String(!!gia),'aria-label':gia?'Visitata: modifica voto e nota':'Segna come visitata',title:gia?'Visitata: modifica voto e nota':'Segna come visitata',onclick:()=>{
+    const v=S.storico.find(x=>x.id===m.id);
+    if(v){apriVisita(v);return}
+    const nv=normVisita({id:m.id,titolo:m.titolo,data:oggi(),stelle:0,nota:''});
+    if(!nv)return;
+    S.storico.push(nv);persist();
+    apriVisita(nv);
+  }});
+  vis.innerHTML=SV('<circle cx="12" cy="12" r="8.5"/><path d="M8.2 12.4l2.6 2.6 5-5.4"/>');
   const fav=h('button',{class:'s-ic fv',type:'button'});
   fav.innerHTML=HEART;
   const setFav=()=>{const p=S.preferiti.includes(m.id);fav.setAttribute('aria-pressed',String(p));fav.setAttribute('aria-label',p?'Togli dalle preferite':'Salva nei preferiti');fav.title=p?'Togli dalle preferite':'Salva nei preferiti'};
@@ -1321,7 +1381,7 @@ function openSheet(m,from){
     rows.push(h('div',{},h('dt',{text:'Fonte'}),h('dd',{},m.url?h('a',{href:m.url,target:'_blank',rel:'noopener noreferrer',text:m.fonte||host(m.url)}):m.fonte)));
   }
   repl($('#sheet-body'),
-    h('div',{class:'s-top'},h('div',{},h('span',{class:'tipo'+(m.tipo==='fotografia'?' foto':''),text:m.tipo==='fotografia'?'Fotografia':'Arte'}),isNew(m)?h('span',{class:'nuova',text:'Nuova'}):null),h('div',{class:'s-icons'},fav,maps,share,modif)),
+    h('div',{class:'s-top'},h('div',{},h('span',{class:'tipo'+(m.tipo==='fotografia'?' foto':''),text:m.tipo==='fotografia'?'Fotografia':'Arte'}),isNew(m)?h('span',{class:'nuova',text:'Nuova'}):null),h('div',{class:'s-icons'},fav,vis,maps,share,modif)),
     h('h2',{class:'s-title',id:'sheet-title'},m.url?h('a',{href:m.url,target:'_blank',rel:'noopener noreferrer',title:'Apri la pagina della mostra',text:m.titolo}):m.titolo),
     h('p',{class:'s-per',text:periodo(m)}),
     h('dl',{class:'s-dl'},rows),
@@ -1382,7 +1442,9 @@ document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   if(!$('#cpop').hidden){chiudiConf(false);return}
   if(!$('#kpop').hidden){chiudiKey();return}
+  if(!$('#vpop').hidden){chiudiVisita();return}
   if(!$('#epop').hidden){chiudiModGita();return}
+  if(!$('#spage').hidden){chiudiStorico();return}
   if(!$('#gpage').hidden){chiudiGita();return}
   if(!$('#pop').hidden){chiudiPop();return}
   setMenu(false);closeSheet();
@@ -1469,6 +1531,7 @@ $('#file-in').addEventListener('change',async e=>{
     if(!S.regione&&regBackup)S.regione=regBackup;
     const n=mergeMostre(lista.map(r=>normMostra(r,(r&&REGIONI.includes(r.regione))?r.regione:(regBackup||S.regione))).filter(m=>m&&m.regione),true);
     if(Array.isArray(data.gite))data.gite.map(normGita).filter(Boolean).forEach(g=>{if(!S.gite.some(x=>norm(x.nome)===norm(g.nome)))S.gite.push(g)});
+    if(Array.isArray(data.storico))data.storico.map(normVisita).filter(Boolean).forEach(v=>{if(!S.storico.some(x=>x.id===v.id))S.storico.push(v)});
     sincGite();
     const agg=mergeAgg;
     if(!Array.isArray(data)){
@@ -1665,6 +1728,106 @@ $('#kpop-form').addEventListener('submit',e=>{
   if(!/^sk-ant-[\w-]{20,}$/.test(k)){$('#k-hint').textContent='La chiave non sembra valida: inizia con sk-ant-.';return}
   setKey(k);chiudiKey();toast('Chiave salvata');
 });
+
+/* ---------- storico delle mostre visitate ---------- */
+const STELLA='<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/>';
+let visCur=null,visStelle=0,visNuova=false;
+function mini(n){
+  const sp=h('span',{class:'st-mini','aria-label':n?n+' stelle su 5':'senza valutazione'});
+  if(!n)return null;
+  for(let i=1;i<=5;i++){const sv=document.createElementNS('http://www.w3.org/2000/svg','svg');sv.setAttribute('viewBox','0 0 24 24');if(i<=n)sv.setAttribute('class','on');sv.innerHTML=STELLA;sp.append(sv)}
+  return sp;
+}
+function disegnaStelle(){
+  $('#v-stelle').replaceChildren(...[1,2,3,4,5].map(i=>{
+    const b=h('button',{type:'button',class:'star','aria-label':i+(i===1?' stella':' stelle'),'aria-pressed':String(visStelle>=i),onclick:()=>{visStelle=(visStelle===i)?0:i;disegnaStelle()}});
+    b.innerHTML=SV(STELLA);return b;
+  }));
+}
+function apriVisita(v){
+  visNuova=!v;
+  visCur=v||null;visStelle=v?v.stelle:0;
+  $('#vpop-title').textContent=v?'Mostra visitata':'Nuova nota';
+  $('#v-nome').value=v?v.titolo:'';
+  $('#v-data').value=v?v.data:oggi();$('#v-nota').value=v?v.nota:'';
+  $('#v-hint').textContent='';
+  $('#v-del').hidden=!v;
+  disegnaStelle();
+  navPush('vpop',chiudiVisita);
+  $('#vpop').hidden=false;document.body.classList.add('lock');
+}
+function ricaricaDopoVisita(){
+  renderStorico();
+  if(!sheet.hidden&&sheetM)openSheet(sheetM,opener);
+}
+function chiudiVisita(){navDrop('vpop');$('#vpop').hidden=true;document.body.classList.remove('lock');visCur=null;visNuova=false}
+$('#v-cancel').addEventListener('click',()=>{chiudiVisita();ricaricaDopoVisita()});
+$('#v-del').addEventListener('click',()=>{
+  if(visCur){S.storico=S.storico.filter(x=>x!==visCur);persist();toast('Tolta dallo storico')}
+  chiudiVisita();ricaricaDopoVisita();
+});
+$('#vpop-form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const nome=str($('#v-nome').value,140);
+  if(!nome){$('#v-hint').textContent='Scrivi il nome della mostra.';$('#v-nome').focus();return}
+  const dati={titolo:nome,data:validDate($('#v-data').value)||oggi(),stelle:visStelle,nota:$('#v-nota').value.trim().slice(0,600)};
+  if(visNuova){
+    const nv=normVisita({id:'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),...dati});
+    if(nv)S.storico.push(nv);
+  }else if(visCur){
+    Object.assign(visCur,dati);
+  }
+  persist();toast('Salvata nello storico');
+  chiudiVisita();ricaricaDopoVisita();
+});
+$('#sp-new').addEventListener('click',()=>apriVisita(null));
+const sp=$('#spage');
+function apriStorico(){
+  closeSheet();setMenu(false);
+  renderStorico();
+  navPush('spage',chiudiStorico);
+  sp.hidden=false;void sp.offsetWidth;sp.classList.add('open');
+  document.body.classList.add('lock');
+  sp.scrollTop=0;
+}
+function chiudiStorico(){
+  if(sp.hidden)return;
+  navDrop('spage');
+  sp.classList.remove('open');
+  document.body.classList.remove('lock');
+  setTimeout(()=>{if(!sp.classList.contains('open'))sp.hidden=true},reduce?0:300);
+}
+$('#sp-back').addEventListener('click',chiudiStorico);
+function renderStorico(){
+  const list=S.storico.slice().sort((a,b)=>a.data<b.data?1:a.data>b.data?-1:a.titolo.localeCompare(b.titolo,'it'));
+  $('#sp-vuoto').hidden=list.length>0;
+  $('#sp-list').hidden=!list.length;
+  $('#sp-n').textContent=list.length?list.length+(list.length===1?' mostra visitata':' mostre visitate'):'';
+  $('#sp-list').replaceChildren(...list.map(v=>{
+    const del=h('button',{class:'del',type:'button',tabindex:'-1','aria-label':'Togli dallo storico: '+v.titolo});
+    del.innerHTML=TRASH;
+    const slide=h('div',{class:'slide'},
+      h('button',{class:'open',type:'button',onclick:()=>{
+        if(li.classList.contains('swiped')){setRow(li,slide,false);return}
+        if(Date.now()-lastSwipe<400)return;
+        apriVisita(v);
+      }},
+        h('span',{class:'t',text:v.titolo}),
+        h('span',{class:'gp-d',text:'Visitata il '+fmtLong.format(parse(v.data))}),
+        mini(v.stelle),
+        v.nota?h('span',{class:'gp-nota',text:v.nota}):null));
+    const li=h('li',{class:'row'},del,slide);
+    del.addEventListener('click',()=>{
+      openRow=null;
+      li.style.height=li.offsetHeight+'px';
+      li.style.transition=reduce?'none':'height .25s ease,opacity .25s ease';
+      requestAnimationFrame(()=>{li.style.height='0';li.style.opacity='0'});
+      setTimeout(()=>{S.storico=S.storico.filter(x=>x!==v);persist();renderStorico();toast('Tolta dallo storico');if(!sheet.hidden&&sheetM)openSheet(sheetM,opener)},reduce?0:270);
+    });
+    attachSwipe(li,slide);
+    return li;
+  }));
+}
 
 /* ---------- gita fuori porta ---------- */
 const gp=$('#gpage');
