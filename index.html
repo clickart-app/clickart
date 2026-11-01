@@ -601,7 +601,12 @@ async function avviaAuto(){
   try{ult=localStorage.getItem('clickart.auto')||''}catch(e){return}
   if(!ult){segnaMese();logAuto('attivo da questo mese, il primo aggiornamento sarà il mese prossimo');return}
   if(ult>=meseOra())return;
-  await cercaMostre(true);
+  for(let i=0;i<3;i++){
+    const r=await cercaMostre(true);
+    if(r!=='rete')return;
+    await new Promise(ok=>setTimeout(ok,12000));
+    if(document.hidden||navigator.onLine===false)return;
+  }
 }
 let mergeAgg=0;
 function mergeMostre(list,aggiorna){
@@ -865,7 +870,7 @@ function vociMenu(){
   if(ui.gita)v.unshift(['Torna a '+S.regione,()=>{esciGita();ui.filtro='tutte';renderDock();vaiLista();disegnaMenu()}]);
   return v;
 }
-const VERSIONE=41;
+const VERSIONE=42;
 function disegnaMenu(){
   $('#gita-btn').setAttribute('aria-pressed',String(!!ui.gita));$('#menu').replaceChildren(...vociMenu().map(([t,fn],i)=>h('button',{type:'button',role:'menuitem',class:t==='Fonti'?'sep':null,text:t,onclick:()=>{setMenu(false);fn()}})).concat([h('p',{class:'ver',text:'ClickArt · versione '+VERSIONE})]))}
 disegnaMenu();
@@ -1040,7 +1045,7 @@ async function cercaMostre(auto){
     toast(n?(n===1?'1 mostra aggiunta':n+' mostre aggiunte')+(scartate?' · '+scartate+' scartate senza link verificato':''):(sample.web?(scartate?'Nessuna mostra nuova con un link verificato.':'Nessuna mostra nuova trovata.'):'Nessuna mostra nuova. Dentro l\'app Claude non vede il web: per un elenco verificato chiedigli di cercarle in chat.'));
   }catch(e){
     if(e&&e.code==='cancelled')return;
-    if(auto){logAuto('non riuscito: '+erroreMsg(e));toast('Aggiornamento mensile non riuscito. '+erroreMsg(e));return}
+    if(auto){logAuto('non riuscito: '+erroreMsg(e)+' Riprovo alla prossima apertura, tieni l\'app aperta per un minuto.');toast('Aggiornamento mensile non riuscito. '+erroreMsg(e));return e&&e.code}
     busy('Ricerca interrotta',erroreMsg(e),{bar:false,actions:[btn('Riprova',()=>cercaMostre()),btn('Indietro',indietro,'btn ghost')]});
   }
 }
