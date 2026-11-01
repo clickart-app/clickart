@@ -666,7 +666,21 @@ function raccogliUrl(content,set){
     if(b.type==='text'&&Array.isArray(b.citations))b.citations.forEach(c=>{if(c&&c.url)set.add(normUrl(c.url))});
   });
 }
+/* un indirizzo che sembra un elenco di mostre (o la home) e non la pagina di una mostra */
+const PAROLE_ELENCO=new Set(['mostre','mostra','eventi','evento','events','event','exhibitions','exhibition','calendario','programma','agenda','esposizioni','esposizione','news','notizie','archivio','attualita','in-corso','in-programma','prossime-mostre','mostre-in-corso','mostre-ed-eventi','mostre-e-eventi','whats-on','what-s-on','visita','visit','percorsi','home','index.html','index.php','it','en','cultura','arte','fotografia']);
+function urlElenco(url){
+  let u;
+  try{u=new URL(url)}catch(e){return true}
+  const segs=u.pathname.toLowerCase().split('/').filter(Boolean);
+  if(!segs.length)return true;
+  const ultimo=segs[segs.length-1];
+  if(PAROLE_ELENCO.has(ultimo))return true;
+  if(segs.some(x=>x==='categoria'||x==='category'||x==='tag'||x==='archivio'||x==='archive'))return true;
+  if(/(^|&)(page|paged|pagina|categoria|category|tag|cat)=/i.test(u.search))return true;
+  return false;
+}
 function linkVerificato(url,set){
+  if(urlElenco(url))return false;
   const n=normUrl(url);
   if(!n||n.indexOf('/')<0)return false;
   for(const u of set){if(u===n||u.startsWith(n+'/')||n.startsWith(u+'/'))return true}
@@ -870,7 +884,7 @@ function vociMenu(){
   if(ui.gita)v.unshift(['Torna a '+S.regione,()=>{esciGita();ui.filtro='tutte';renderDock();vaiLista();disegnaMenu()}]);
   return v;
 }
-const VERSIONE=42;
+const VERSIONE=43;
 function disegnaMenu(){
   $('#gita-btn').setAttribute('aria-pressed',String(!!ui.gita));$('#menu').replaceChildren(...vociMenu().map(([t,fn],i)=>h('button',{type:'button',role:'menuitem',class:t==='Fonti'?'sep':null,text:t,onclick:()=>{setMenu(false);fn()}})).concat([h('p',{class:'ver',text:'ClickArt · versione '+VERSIONE})]))}
 disegnaMenu();
@@ -998,6 +1012,7 @@ ${fonti.length?fonti.map(f=>'- '+f.nome+' ('+f.url+')').join('\n'):'(nessuna: us
 Elenca le mostre d'arte e di fotografia in corso oggi o in programma nei prossimi mesi in ${reg}, tra quelle che queste fonti e queste sedi presentano.
 ${web?'Usa la ricerca web: consulta i siti delle fonti indicate e le pagine ufficiali delle sedi, e riporta solo mostre di cui hai letto titolo, sede e date. Se non trovi con certezza le date, non includere la mostra. Non inventare nulla.':'Non hai accesso al web e non puoi controllare i siti. Includi solo mostre di cui conosci con ragionevole certezza titolo, sede e date. Se non sei sicuro di una mostra o delle sue date, non includerla. Non inventare nulla: un elenco breve ma esatto è meglio di uno lungo.'} Escludi le mostre già concluse prima di oggi.${web&&gen?"\nFai anche una ricerca generale sul web, oltre alle fonti indicate: cerca mostre d'arte e di fotografia in "+reg+" presentate da musei, gallerie, fondazioni, comuni, festival e portali di eventi, e includi quelle di cui trovi titolo, sede e date. Nel campo \"fonte\" scrivi il sito dove le hai trovate.":''}
 ${gia.length?'Mostre già presenti, da non ripetere: '+gia.slice(0,80).join('; ')+'.':''}
+IMPORTANTE per il campo "url": deve essere la pagina dedicata a quella singola mostra, non una pagina con l'elenco delle mostre, non la home del sito e non una pagina di categoria o di archivio. Se la ricerca ti porta solo a una pagina elenco, apri da lì la pagina della mostra (o cercala con il titolo esatto). Se non trovi la pagina specifica, non includere la mostra.
 Rispondi alla fine solo con un array JSON (senza blocchi di codice e senza altro testo dopo) di al massimo 20 oggetti con questi campi: "titolo", "tipo" ("arte" oppure "fotografia"), "luogo" (nome della sede), "indirizzo" (via e numero civico), "citta", "dal" e "al" (date AAAA-MM-GG), "descrizione" (al massimo 160 caratteri), "fonte" (nome della fonte), "url" (${web?'indirizzo esatto della pagina web che hai aperto o trovato con la ricerca e da cui hai preso i dati di quella mostra specifica, non la home del sito. Le mostre senza un indirizzo di questo tipo verranno scartate, quindi non includerle':'pagina della mostra o della sede, solo se la conosci con certezza, altrimenti stringa vuota'}).`;
 }
 function erroreMsg(e){
@@ -1741,6 +1756,7 @@ function promptGita(citta,dal,al,gia){
 Data di oggi: ${oggi()}. L'utente andrà a visitare: ${citta}. Periodo della visita: ${periodo}.
 Usa la ricerca web: consulta i siti di musei, gallerie, fondazioni e portali di eventi di ${citta} e riporta le mostre d'arte e di fotografia aperte ${dal||al?'in quel periodo':'oggi o in programma a breve'}, di cui hai letto titolo, sede e date. Se non trovi con certezza le date, non includere la mostra. Non inventare nulla. Escludi le mostre già concluse prima di oggi.
 ${gia.length?'Mostre già presenti, da non ripetere: '+gia.slice(0,60).join('; ')+'.':''}
+IMPORTANTE per il campo "url": deve essere la pagina dedicata a quella singola mostra, non una pagina con l'elenco delle mostre, non la home del sito e non una pagina di categoria o di archivio. Se la ricerca ti porta solo a una pagina elenco, apri da lì la pagina della mostra (o cercala con il titolo esatto). Se non trovi la pagina specifica, non includere la mostra.
 Rispondi alla fine solo con un array JSON (senza blocchi di codice e senza altro testo dopo) di al massimo 20 oggetti con questi campi: "titolo", "tipo" ("arte" oppure "fotografia"), "luogo" (nome della sede), "indirizzo" (via e numero civico), "citta", "dal" e "al" (date AAAA-MM-GG), "descrizione" (in italiano, al massimo 160 caratteri), "fonte" (nome del sito), "url" (indirizzo esatto della pagina che hai aperto o trovato con la ricerca e da cui hai preso i dati di quella mostra specifica, non la home del sito; le mostre senza un indirizzo di questo tipo verranno scartate, quindi non includerle).`;
 }
 async function cercaGita(g){
