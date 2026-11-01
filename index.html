@@ -79,6 +79,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .menu{position:absolute;right:0;top:calc(100% + 4px);min-width:230px;background:var(--bg);border:1px solid var(--rule);box-shadow:0 8px 28px rgba(0,0,0,.18);padding:6px 0;z-index:45}
 .menu button{display:block;width:100%;text-align:left;background:none;border:0;padding:12px 20px;font-size:18px;cursor:pointer;color:var(--fg)}
 .menu button:hover,.menu button:focus-visible{background:var(--line);outline-offset:-2px}
+.menu .ver{margin:6px 0 0;padding:10px 20px 4px;border-top:1px solid var(--line);font-size:14px;letter-spacing:.08em;color:var(--muted)}
 .menu button.sep{border-top:1px solid var(--line);margin-top:6px;padding-top:14px}
 
 /* testi */
@@ -864,8 +865,9 @@ function vociMenu(){
   if(ui.gita)v.unshift(['Torna a '+S.regione,()=>{esciGita();ui.filtro='tutte';renderDock();vaiLista();disegnaMenu()}]);
   return v;
 }
+const VERSIONE=41;
 function disegnaMenu(){
-  $('#gita-btn').setAttribute('aria-pressed',String(!!ui.gita));$('#menu').replaceChildren(...vociMenu().map(([t,fn],i)=>h('button',{type:'button',role:'menuitem',class:t==='Fonti'?'sep':null,text:t,onclick:()=>{setMenu(false);fn()}})))}
+  $('#gita-btn').setAttribute('aria-pressed',String(!!ui.gita));$('#menu').replaceChildren(...vociMenu().map(([t,fn],i)=>h('button',{type:'button',role:'menuitem',class:t==='Fonti'?'sep':null,text:t,onclick:()=>{setMenu(false);fn()}})).concat([h('p',{class:'ver',text:'ClickArt · versione '+VERSIONE})]))}
 disegnaMenu();
 $('#menu-btn').addEventListener('click',()=>{
   const open=$('#menu').hidden;
