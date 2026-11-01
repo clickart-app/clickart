@@ -588,11 +588,17 @@ function meseOra(){return oggi().slice(0,7)}
 function autoOn(){try{return localStorage.getItem('clickart.automese')!=='0'}catch(e){return false}}
 function setAutoOn(v){try{localStorage.setItem('clickart.automese',v?'1':'0')}catch(e){}}
 function segnaMese(){try{localStorage.setItem('clickart.auto',meseOra())}catch(e){}}
+function logAuto(m){try{localStorage.setItem('clickart.autolog',JSON.stringify({d:oggi(),m}))}catch(e){}}
+function leggiLogAuto(){try{const o=JSON.parse(localStorage.getItem('clickart.autolog')||'null');return o&&o.d&&o.m?'Ultimo controllo automatico: '+fmtLong.format(parse(o.d))+' · '+o.m+'.':''}catch(e){return ''}}
 async function avviaAuto(){
-  if(hasClaude||!autoOn()||!S.regione||!getKey()||navigator.onLine===false)return;
+  if(hasClaude)return;
+  if(!autoOn())return;
+  if(!S.regione)return;
+  if(!getKey()){logAuto('manca la chiave API');return}
+  if(navigator.onLine===false){logAuto('telefono senza connessione');return}
   let ult='';
   try{ult=localStorage.getItem('clickart.auto')||''}catch(e){return}
-  if(!ult){segnaMese();return}
+  if(!ult){segnaMese();logAuto('attivo da questo mese, il primo aggiornamento sarà il mese prossimo');return}
   if(ult>=meseOra())return;
   await cercaMostre(true);
 }
@@ -1002,7 +1008,7 @@ async function cercaMostre(auto){
   const reg=S.regione;
   esciGita();
   const fonti=(S.fonti[reg]||[]).filter(f=>f.attiva);
-  if(!fonti.length&&!soloGen()){if(!auto)toast('Scegli almeno una fonte.');return}
+  if(!fonti.length&&!soloGen()){if(auto)logAuto('nessuna fonte attiva e ricerca generale spenta');else toast('Scegli almeno una fonte.');return}
   const indietro=()=>mostreRegione().length?vaiLista():(renderFonti(),show('fonti'));
   const sample=await getSample();
   if(!sample&&auto)return;
@@ -1028,11 +1034,11 @@ async function cercaMostre(auto){
     const scartate=trovate.length-buone.length;
     const n=mergeMostre(buone);
     S.aggiornato=oggi();persist();
-    if(auto){segnaMese();if(cur==='lista')renderLista()}else vaiLista();
+    if(auto){segnaMese();logAuto(n?(n===1?'1 mostra aggiunta':n+' mostre aggiunte'):'nessuna mostra nuova'+(scartate?' ('+scartate+' scartate senza link verificato)':''));if(cur==='lista')renderLista()}else vaiLista();
     toast(n?(n===1?'1 mostra aggiunta':n+' mostre aggiunte')+(scartate?' · '+scartate+' scartate senza link verificato':''):(sample.web?(scartate?'Nessuna mostra nuova con un link verificato.':'Nessuna mostra nuova trovata.'):'Nessuna mostra nuova. Dentro l\'app Claude non vede il web: per un elenco verificato chiedigli di cercarle in chat.'));
   }catch(e){
     if(e&&e.code==='cancelled')return;
-    if(auto){toast('Aggiornamento mensile non riuscito. '+erroreMsg(e));return}
+    if(auto){logAuto('non riuscito: '+erroreMsg(e));toast('Aggiornamento mensile non riuscito. '+erroreMsg(e));return}
     busy('Ricerca interrotta',erroreMsg(e),{bar:false,actions:[btn('Riprova',()=>cercaMostre()),btn('Indietro',indietro,'btn ghost')]});
   }
 }
@@ -1618,7 +1624,7 @@ async function chiediRicerca(){
 /* ---------- chiave API (solo versione web) ---------- */
 function apriKey(){
   closeSheet();
-  $('#kpop-form').reset();$('#k-hint').textContent='';
+  $('#kpop-form').reset();$('#k-hint').textContent=leggiLogAuto();
   $('#k-del').hidden=!getKey();
   $('#k-auto').checked=autoOn();
   $('#k-key').placeholder=getKey()?'Chiave salvata. Scrivine una nuova per sostituirla':'sk-ant-…';
